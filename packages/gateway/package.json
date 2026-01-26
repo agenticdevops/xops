@@ -1,0 +1,34 @@
+{
+  "name": "@opspilot/gateway",
+  "version": "0.1.0",
+  "description": "Main gateway server with Hono and AOF runtime integration",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@opspilot/core": "workspace:*",
+    "@opspilot/memory": "workspace:*",
+    "@opspilot/channels": "workspace:*",
+    "@opspilot/skills": "workspace:*",
+    "@opspilot/automation": "workspace:*",
+    "hono": "^4.7.0",
+    "@anthropic-ai/sdk": "^0.35.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

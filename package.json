@@ -1,0 +1,35 @@
+{
+  "name": "opspilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Your 24/7 DevOps Copilot that actually does the work",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agenticops/opspilot"
+  },
+  "license": "Apache-2.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "cli": "bun run apps/cli/src/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prettier": "^3.2.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "bun@1.1.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

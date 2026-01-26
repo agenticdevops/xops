@@ -1,0 +1,7 @@
+[install]
+# Use Bun's workspace resolution
+peer = true
+
+[install.scopes]
+# Allow workspace packages
+"@opspilot" = { "workspace" = true }

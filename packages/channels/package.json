@@ -1,0 +1,29 @@
+{
+  "name": "@opspilot/channels",
+  "version": "0.1.0",
+  "description": "Channel adapters for Telegram, Slack, and Web",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@opspilot/core": "workspace:*",
+    "grammy": "^1.31.0",
+    "@slack/bolt": "^4.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
