@@ -22,6 +22,13 @@ describe('renderRecipe', () => {
     expect(yaml).toContain('available_tools: [shell]');
     // safety rules baked in
     expect(yaml).toContain('Never delete namespaces');
+    // non-interactive: prompt itself carries full directives (ACP bridge can
+    // dilute instructions) and forbids asking the user anything
+    const promptSection = yaml.slice(yaml.indexOf('prompt:'));
+    expect(promptSection).toContain('non-interactive');
+    expect(promptSection).toContain('Do not ask');
+    expect(promptSection).toContain('diagnose');
+    expect(promptSection).toContain('{{ namespace }}');
   });
 
   test('different skill name lands in instructions and prompt', () => {

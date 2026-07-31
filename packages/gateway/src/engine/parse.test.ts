@@ -41,4 +41,27 @@ describe('parseGooseOutput', () => {
     expect(parseGooseOutput('').finalText).toBeNull();
     expect(parseGooseOutput('not json at all').finalText).toBeNull();
   });
+
+  test('accumulates streaming text deltas sharing a message id (goose 1.45)', () => {
+    const delta = (id: string, text: string) =>
+      line({ type: 'message', message: { id, role: 'assistant', content: [{ type: 'text', text }] } });
+    const thinking = (id: string, t: string) =>
+      line({ type: 'message', message: { id, role: 'assistant', content: [{ type: 'thinking', thinking: t }] } });
+
+    const raw = [
+      thinking('m1', 'hm'),
+      delta('m1', 'Root cause: '),
+      delta('m1', 'bad probe port. '),
+      delta('m1', 'Patched to 8080.'),
+    ].join('\n');
+
+    expect(parseGooseOutput(raw).finalText).toBe('Root cause: bad probe port. Patched to 8080.');
+  });
+
+  test('deltas from a later message id supersede earlier messages', () => {
+    const delta = (id: string, text: string) =>
+      line({ type: 'message', message: { id, role: 'assistant', content: [{ type: 'text', text }] } });
+    const raw = [delta('m1', 'thinking out loud'), delta('m2', 'Final '), delta('m2', 'answer.')].join('\n');
+    expect(parseGooseOutput(raw).finalText).toBe('Final answer.');
+  });
 });

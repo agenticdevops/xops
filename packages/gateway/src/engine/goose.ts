@@ -29,6 +29,7 @@ export interface EngineRunOutcome {
   timedOut: boolean;
   guardLog: Array<Record<string, unknown>>;
   rawPath: string;
+  stderr: string;
 }
 
 const KILL_GRACE_MS = 15_000;
@@ -102,13 +103,14 @@ export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOu
   ];
 
   const chunks: Buffer[] = [];
+  const errChunks: Buffer[] = [];
   let timedOut = false;
 
   const exitCode = await new Promise<number | null>((resolvePromise) => {
     const proc = spawn(gooseBin, args, { cwd: wd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
 
     proc.stdout.on('data', (d: Buffer) => chunks.push(d));
-    proc.stderr.on('data', (d: Buffer) => chunks.length); // drain; stderr kept out of parse stream
+    proc.stderr.on('data', (d: Buffer) => errChunks.push(d));
 
     const killGroup = (signal: NodeJS.Signals) => {
       if (proc.pid) {
@@ -140,6 +142,8 @@ export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOu
 
   const raw = Buffer.concat(chunks).toString('utf8');
   writeFileSync(rawPath, raw);
+  const stderr = Buffer.concat(errChunks).toString('utf8');
+  writeFileSync(join(wd, 'run.stderr.log'), stderr);
 
   const guardLog = readFileSync(guardLogPath, 'utf8')
     .split('\n')
@@ -152,7 +156,7 @@ export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOu
       }
     });
 
-  return { result: parseGooseOutput(raw), exitCode, timedOut, guardLog, rawPath };
+  return { result: parseGooseOutput(raw), exitCode, timedOut, guardLog, rawPath, stderr };
 }
 
 function findRealKubectl(shimBinDir: string): string {

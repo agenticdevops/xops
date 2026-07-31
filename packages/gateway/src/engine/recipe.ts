@@ -36,6 +36,14 @@ extensions:
     bundled: true
     available_tools: [shell]
 prompt: |
-  Call load_skill first, then follow the skill to handle namespace {{ namespace }}.
+  This is a non-interactive automated run. There is no human available.
+  Do not ask questions - if information is missing, obtain it yourself with
+  the shell tool. Workloads in namespace {{ namespace }} are unhealthy.
+  1. Load the skill "${opts.skill}" now.
+  2. Run its diagnose script against namespace {{ namespace }} and read the JSON.
+  3. Match evidence to the skill's decision table and EXECUTE the mapped
+     kubectl fix. A description is not a fix.
+  4. Verify pods become Ready and restarts stay stable, then report: root
+     cause, fix applied, exact commands, verification result.
 `;
 }

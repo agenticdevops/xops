@@ -6,6 +6,7 @@
  */
 
 interface GooseMessage {
+  id?: string;
   role?: string;
   content?: Array<{ type?: string; text?: string }>;
 }
@@ -31,18 +32,24 @@ export function parseGooseOutput(raw: string): GooseResult {
     }
   }
 
-  let finalText: string | null = null;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role !== 'assistant') continue;
+  // goose 1.45 stream-json emits incremental deltas sharing a message id;
+  // accumulate text per id (fallback: line index = own group), last group
+  // containing text wins.
+  const order: string[] = [];
+  const textById = new Map<string, string>();
+  messages.forEach((msg, i) => {
+    if (msg.role !== 'assistant') return;
+    const id = msg.id ?? `__idx_${i}`;
     for (const block of msg.content ?? []) {
       if (block.type === 'text' && block.text) {
-        finalText = block.text;
-        break;
+        if (!textById.has(id)) order.push(id);
+        textById.set(id, (textById.get(id) ?? '') + block.text);
       }
     }
-    if (finalText !== null) break;
-  }
+  });
+
+  const lastId = order[order.length - 1];
+  const finalText = lastId !== undefined ? textById.get(lastId) ?? null : null;
 
   return { finalText, messageCount: messages.length };
 }
