@@ -25,17 +25,25 @@
 - **Kill signals:** goose subprocess flaky/unworkable; guard can't be fail-closed without breaking goose's loop; chat latency unusable
 
 ### Decision gate — after the slice
-Proceed only if: demo works repeatably; goose integration felt solid not fragile; latency acceptable for chat; you'd actually use it on a real cluster.
-- **Go** → post-POC phases below
-- **No-go** → write up learnings, wrap.
+**✅ GO — decided 2026-08-03.** Live demo passed: Telegram message → goose run → guarded diagnose (1 deny, agent recovered) → real fix → pods 1/1 Running verified independently. Latency 1–3 min/run acceptable. Known product gap acknowledged: bridge is single-flow (every message → incident pipeline); intent routing/persona is the top post-POC item.
 
-## Post-POC (only if go)
+## Build phases (post-gate, reordered 2026-08-03)
 
-1. **Cleanup + hardening** — delete `AIRuntime` backends, fix known concerns (cross-package imports, duplicate types, cli/memory interface mismatch), port remaining openagentix skills
-2. **Wizard v2** — goose install/detection, kubeconfig provisioning, Telegram token setup end-to-end
-3. **Memory injection** — retrieved memory context into recipes
-4. **Automation** — build `@opspilot/automation`: heartbeat, morning briefing, cron on same goose+verify pipeline
-5. **Channels + docs** — Slack/Web wiring, Docusaurus updated per convention
+1. **Product layer: agent routing + persona** — intent detection (chat vs incident vs command), general chat via goose session, namespace/skill selection, OpsPilot persona; fixes "one-trick script" gap from demo feedback
+2. **Cleanup + hardening** — delete `AIRuntime` backends, guard accepts flags-before-verb, config schema matches accounts layout, fix known concerns (cross-package imports, duplicate types, cli/memory mismatch), port remaining openagentix skills
+3. **Ops lifecycle** — auto-reprovision RBAC tokens (2h expiry bit us), kubeconfig port drift detection, bridge as supervised long-running service (`opspilot start`), reconnect/restart resilience
+4. **Wizard v2** — goose install/detection, kubeconfig provisioning, Telegram token setup end-to-end
+5. **Memory injection** — retrieved memory context into recipes
+6. **Automation** — build `@opspilot/automation`: heartbeat, morning briefing, cron on same goose+verify pipeline
+7. **Channels + docs** — Slack/Web wiring, Docusaurus updated per convention
+
+## POC learnings (keep)
+
+- goose 1.45 stream-json emits per-message-id text deltas; accumulate, don't take last block
+- claude-acp bridge dilutes recipe `instructions`; put full directives in `prompt`, mark run non-interactive
+- guard shim: agent recovers gracefully from DENY (retried verb-first after flag-first deny)
+- RBAC tokens 2h-lived; kind API port can drift across docker restarts — regenerate scoped kubeconfig per run
+- Never trust agent self-report: independent `verifyNamespace()` after every run (proved correct in demo)
 
 ---
 *Created 2026-07-31. Status: POC not started.*
