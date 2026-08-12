@@ -11,10 +11,10 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://opspilot.sh',
-  baseUrl: '/',
+  url: 'https://agenticdevops.github.io',
+  baseUrl: '/opspilot/',
 
-  organizationName: 'agenticops',
+  organizationName: 'agenticdevops',
   projectName: 'opspilot',
 
   onBrokenLinks: 'throw',
