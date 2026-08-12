@@ -27,15 +27,18 @@
 ### Decision gate — after the slice
 **✅ GO — decided 2026-08-03.** Live demo passed: Telegram message → goose run → guarded diagnose (1 deny, agent recovered) → real fix → pods 1/1 Running verified independently. Latency 1–3 min/run acceptable. Known product gap acknowledged: bridge is single-flow (every message → incident pipeline); intent routing/persona is the top post-POC item.
 
-## Build phases (post-gate, reordered 2026-08-03)
+## Build phases (post-gate; updated 2026-08-12 after xopsbot consolidation decision)
 
-1. **Product layer: agent routing + persona** — intent detection (chat vs incident vs command), general chat via goose session, namespace/skill selection, OpsPilot persona; fixes "one-trick script" gap from demo feedback
-2. **Cleanup + hardening** — delete `AIRuntime` backends, guard accepts flags-before-verb, config schema matches accounts layout, fix known concerns (cross-package imports, duplicate types, cli/memory mismatch), port remaining openagentix skills
-3. **Ops lifecycle** — auto-reprovision RBAC tokens (2h expiry bit us), kubeconfig port drift detection, bridge as supervised long-running service (`opspilot start`), reconnect/restart resilience
-4. **Wizard v2** — goose install/detection, kubeconfig provisioning, Telegram token setup end-to-end
-5. **Memory injection** — retrieved memory context into recipes
-6. **Automation** — build `@opspilot/automation`: heartbeat, morning briefing, cron on same goose+verify pipeline
-7. **Channels + docs** — Slack/Web wiring, Docusaurus updated per convention
+*Decision: OpsPilot continues as the one project, released as **opspilot.sh**, goose engine. xopsbot (`../experiments/xopsbot`, OpenClaw-based, v1 complete but stale) is discontinued as a product and mined for parts. xops.bot domain parked/redirect.*
+
+1. **Product layer: agent routing + personas** — intent detection (chat vs incident vs command), general chat via goose session, namespace/skill selection. **Port from xopsbot:** 5 persona templates (`xopsbot/workspaces/*/{IDENTITY,SOUL,TOOLS}.md`) adapted to goose recipes; safety-mode concept (Safe/Standard/Full) as approval tiers layered ON TOP of fail-closed guard (hard boundary stays ours)
+2. **Guard v2** — **port xopsbot risk taxonomy** (`safety/risk-classifications.json`, 186 commands LOW→CRITICAL) as guard decision data across kubectl/docker/helm/terraform; fix flags-before-verb parsing; docker guard profile (non-k8s slice)
+3. **Cleanup + hardening** — delete `AIRuntime` backends, config schema matches accounts layout, fix known concerns (cross-package imports, duplicate types, cli/memory mismatch), port remaining openagentix skills; convert xopsbot's 10 prose skills to executable-runbook format incrementally
+4. **Ops lifecycle** — auto-reprovision RBAC tokens, kubeconfig drift detection, supervised `opspilot start` service, reconnect/restart resilience
+5. **Wizard v2** — **port xopsbot wizard flows** (6-step, presets, profiles) retargeted at goose install/detection, kubeconfig provisioning, Telegram setup
+6. **Memory injection** — retrieved memory context into recipes
+7. **Automation** — `@opspilot/automation`: heartbeat, morning briefing, cron on same goose+verify pipeline
+8. **Channels + docs + launch** — Slack/Web wiring; **port/adapt xopsbot's 29-page docs** to opspilot.sh Docusaurus; launch site
 
 ## POC learnings (keep)
 

@@ -73,7 +73,8 @@ A user messages OpsPilot on Telegram and it safely executes a Kubernetes operati
 | Port openagentix skill format (SKILL.md + scripts + decision tables) | Proven with goose recipes; richer than opspilot's current format; lighter than aoh pack spec | — Pending |
 | k8s-focused security: RBAC-scoped kubeconfig + fail-closed verb allowlist | aoh's proven model; RBAC as hard boundary beats hook-only approaches | — Pending |
 | Verify actual state post-run, never model self-report | openagentix bench discipline; core trust requirement for an ops agent | — Pending |
-| Telegram → safe k8s action as v1 core slice | Proves entire stack end-to-end: channel → engine → guardrails → verify → reply | — Pending |
+| Telegram → safe k8s action as v1 core slice | Proves entire stack end-to-end: channel → engine → guardrails → verify → reply | ✓ Good (POC demo 2026-08-03) |
+| Consolidate with xopsbot: OpsPilot wins, brand opspilot.sh (2026-08-12) | Enterprise DevOps buyers won't trust OpenClaw; goose (Block) is credible. opspilot has proven harness; xopsbot becomes parts donor: risk taxonomy (186 cmds), 5 personas, wizard flows, safety modes, docs content, 10 prose skills to convert | — Pending |
 
 ## Evolution
 
