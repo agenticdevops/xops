@@ -17,7 +17,7 @@ export const DEFAULT_MEMORY_PATH = path.join(DEFAULT_CONFIG_DIR, 'memory.db');
 
 // Zod schema for validation
 export const AIConfigSchema = z.object({
-  provider: z.enum(['anthropic', 'openai', 'bedrock', 'gemini', 'ollama', 'openrouter']),
+  provider: z.enum(['claude-code', 'anthropic', 'openai', 'bedrock', 'gemini', 'ollama', 'openrouter']),
   model: z.string(),
   apiKey: z.string().optional(),
   maxTokens: z.number().optional(),
@@ -132,8 +132,8 @@ export function getDefaultConfig(): OpsPilotConfig {
   return {
     version: '1',
     ai: {
-      provider: 'anthropic',
-      model: 'claude-sonnet-4-20250514',
+      provider: 'claude-code',
+      model: 'sonnet',
     },
     channels: {
       telegram: { enabled: false },

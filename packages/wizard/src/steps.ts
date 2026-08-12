@@ -35,18 +35,32 @@ export async function selectMode(): Promise<'quickstart' | 'advanced'> {
  * Step: Configure AI provider
  */
 export async function configureAI(state: WizardState): Promise<void> {
+  // Check if Claude Code CLI is available
+  let claudeCodeAvailable = false;
+  try {
+    execSync('which claude', { stdio: 'ignore' });
+    claudeCodeAvailable = true;
+  } catch {
+    // Claude Code CLI not installed
+  }
+
   // Select provider
+  const providerOptions = [
+    ...(claudeCodeAvailable
+      ? [{ value: 'claude-code' as const, label: 'Claude Code (Recommended)', hint: 'Uses your existing subscription - no API key needed' }]
+      : []),
+    { value: 'anthropic' as const, label: 'Anthropic API', hint: 'API key required, pay-per-token' },
+    { value: 'openai' as const, label: 'OpenAI GPT', hint: 'GPT-4o, GPT-4' },
+    { value: 'bedrock' as const, label: 'AWS Bedrock', hint: 'Claude via AWS' },
+    { value: 'gemini' as const, label: 'Google Gemini', hint: 'Gemini Pro' },
+    { value: 'ollama' as const, label: 'Ollama (Local)', hint: 'Run models locally, free' },
+    { value: 'openrouter' as const, label: 'OpenRouter', hint: 'Multi-provider gateway' },
+  ];
+
   const provider = await prompts.selectOption({
     message: 'Select AI Provider',
-    options: [
-      { value: 'anthropic', label: 'Anthropic Claude (Recommended)', hint: 'Best for coding & ops' },
-      { value: 'openai', label: 'OpenAI GPT', hint: 'GPT-4o, GPT-4' },
-      { value: 'bedrock', label: 'AWS Bedrock', hint: 'Claude via AWS' },
-      { value: 'gemini', label: 'Google Gemini', hint: 'Gemini Pro' },
-      { value: 'ollama', label: 'Ollama (Local)', hint: 'Run models locally' },
-      { value: 'openrouter', label: 'OpenRouter', hint: 'Multi-provider gateway' },
-    ],
-    initialValue: 'anthropic',
+    options: providerOptions,
+    initialValue: claudeCodeAvailable ? 'claude-code' : 'anthropic',
   });
 
   if (prompts.isCancel(provider)) prompts.handleCancel();
@@ -54,6 +68,7 @@ export async function configureAI(state: WizardState): Promise<void> {
 
   // Set default model based on provider
   const defaultModels: Record<string, string> = {
+    'claude-code': 'sonnet',
     anthropic: 'claude-sonnet-4-20250514',
     openai: 'gpt-4o',
     bedrock: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
@@ -63,8 +78,13 @@ export async function configureAI(state: WizardState): Promise<void> {
   };
   state.aiModel = defaultModels[state.aiProvider] ?? 'claude-sonnet-4-20250514';
 
-  // Get API key (skip for Ollama)
-  if (state.aiProvider !== 'ollama') {
+  // Claude Code and Ollama don't need API keys
+  if (state.aiProvider === 'claude-code') {
+    prompts.success('Using your Claude subscription via Claude Code CLI');
+    state.aiApiKey = undefined;
+  } else if (state.aiProvider === 'ollama') {
+    state.aiApiKey = undefined;
+  } else {
     const envVars: Record<string, string> = {
       anthropic: 'ANTHROPIC_API_KEY',
       openai: 'OPENAI_API_KEY',

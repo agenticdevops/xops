@@ -6,21 +6,25 @@ set -euo pipefail
 
 PATTERN="${1:?usage: diagnose.sh <container-name-or-pattern>}"
 
-CID=$(docker ps -a --filter "name=${PATTERN}" --format '{{.ID}}' | head -1)
+# Every docker call is bounded — a diagnose script must never hang
+# (docker logs can block while a container is in a rapid restart loop).
+DTIMEOUT=15
+
+CID=$(timeout "$DTIMEOUT" docker ps -a --filter "name=${PATTERN}" --format '{{.ID}}' | head -1)
 if [ -z "$CID" ]; then
   echo "{\"error\": \"no container matching '${PATTERN}'\"}"
   exit 0
 fi
 
-INSPECT=$(docker inspect "$CID")
+INSPECT=$(timeout "$DTIMEOUT" docker inspect "$CID")
 
-LOGS_CURRENT=$(docker logs --tail 20 "$CID" 2>&1 | tail -c 2000 | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+LOGS_CURRENT=$( (timeout "$DTIMEOUT" docker logs --tail 20 "$CID" 2>&1 || true) | tail -c 2000 | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
 
-echo "$INSPECT" | python3 - "$LOGS_CURRENT" <<'EOF'
-import json, sys
+INSPECT_JSON="$INSPECT" LOGS_JSON="$LOGS_CURRENT" python3 <<'EOF'
+import json, os
 
-inspect = json.load(sys.stdin)[0]
-logs = json.loads(sys.argv[1])
+inspect = json.loads(os.environ["INSPECT_JSON"])[0]
+logs = json.loads(os.environ["LOGS_JSON"])
 
 state = inspect.get("State", {})
 health = state.get("Health") or {}

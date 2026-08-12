@@ -3,7 +3,7 @@
  */
 
 export interface AIConfig {
-  provider: 'anthropic' | 'openai' | 'bedrock' | 'gemini' | 'ollama' | 'openrouter';
+  provider: 'claude-code' | 'anthropic' | 'openai' | 'bedrock' | 'gemini' | 'ollama' | 'openrouter';
   model: string;
   apiKey?: string;
   maxTokens?: number;

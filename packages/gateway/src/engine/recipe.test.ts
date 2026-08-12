@@ -15,7 +15,7 @@ describe('renderRecipe', () => {
     expect(yaml).toContain('requirement: required');
     expect(yaml).toContain('{{ namespace }}');
     // load_skill convention: instructions direct the agent to load the skill first
-    expect(yaml).toContain('load_skill');
+    expect(yaml).toContain('.goose/skills/k8s-pod-restart-triage/SKILL.md');
     expect(yaml).toContain('k8s-pod-restart-triage');
     // shell tool available via developer extension
     expect(yaml).toContain('name: developer');

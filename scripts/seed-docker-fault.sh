@@ -15,8 +15,8 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 
 case "$FAULT" in
   oom)
-    docker run -d --name "$NAME" --memory 16m --memory-swap 16m --restart on-failure:10 \
-      python:3.12-alpine python3 -c 'b = bytearray(64 * 1024 * 1024); import time; time.sleep(3600)'
+    docker run -d --name "$NAME" --memory 16m --memory-swap 16m --restart on-failure:3 \
+      python:3.12-alpine python3 -c 'b = bytearray(24 * 1024 * 1024); import time; time.sleep(3600)'
     ;;
   exit0)
     docker run -d --name "$NAME" alpine:3 sh -c 'echo done'

@@ -50,9 +50,11 @@ parameters:
     description: ${profile.paramDescription}
 instructions: |
   You are an SRE agent. ${profile.subject}.
-  STEP 1 - Call load_skill NOW with name "${opts.skill}". It gives you the
-    diagnose script, procedure, and decision table.
-  STEP 2 - Run the skill's diagnose script with the shell tool; read its JSON.
+  STEP 1 - Read the runbook NOW with the shell tool:
+    cat .goose/skills/${opts.skill}/SKILL.md
+    It contains the procedure, decision table, and escalation criteria.
+    Do not use any skill-loading tool; read the file directly.
+  STEP 2 - Run the runbook's diagnose script with the shell tool; read its JSON.
   STEP 3 - Match evidence to the decision table and RUN the mapped fix command.
     A description is not a fix - you must execute the command.
   STEP 4 - Verify per the skill's procedure before reporting.
@@ -68,11 +70,13 @@ prompt: |
   This is a non-interactive automated run. There is no human available.
   Do not ask questions - if information is missing, obtain it yourself with
   the shell tool. ${profile.subject}.
-  1. Load the skill "${opts.skill}" now.
-  2. Run its diagnose script against ${p} and read the JSON.
-  3. Match evidence to the skill's decision table and EXECUTE the mapped
+  1. Read the runbook with shell: cat .goose/skills/${opts.skill}/SKILL.md
+     (do not use skill-loading tools; the file is in the working directory).
+  2. Run its diagnose script against ${p} and read the JSON. The script is at
+     .goose/skills/${opts.skill}/scripts/diagnose.sh
+  3. Match evidence to the runbook's decision table and EXECUTE the mapped
      fix. A description is not a fix.
-  4. Verify per the skill's procedure, then report: root cause, fix applied,
+  4. Verify per the runbook's procedure, then report: root cause, fix applied,
      exact commands, verification result.
 `;
 }

@@ -49,7 +49,7 @@ export async function handleIncident(req: IncidentRequest): Promise<IncidentRepl
     workdir: join(req.workdir, `run-${req.target.replace(/[^a-z0-9-]/gi, '_')}`),
     skillsSource: req.skillsSource,
     kubeconfig: req.kubeconfig,
-    timeoutMs: req.timeoutMs ?? 300_000,
+    timeoutMs: req.timeoutMs ?? 420_000,
   } satisfies EngineRunOptions);
 
   const verdict =
