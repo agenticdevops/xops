@@ -1,7 +1,7 @@
 /**
- * @opspilot/memory - Hybrid vector + keyword memory system
+ * @xops/memory - Hybrid vector + keyword memory system
  *
- * Ported from clawdbot's proven implementation with simplifications for OpsPilot.
+ * Ported from clawdbot's proven implementation with simplifications for xops.
  */
 
 export * from './types';

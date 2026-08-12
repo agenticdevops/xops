@@ -1,5 +1,5 @@
 {
-  "name": "@opspilot/automation",
+  "name": "@xops/automation",
   "version": "0.1.0",
   "description": "Heartbeat, cron jobs, and subagent automation",
   "type": "module",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@opspilot/core": "workspace:*",
+    "@xops/core": "workspace:*",
     "croner": "^9.0.0"
   },
   "devDependencies": {

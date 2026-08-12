@@ -1,7 +1,7 @@
 {
-  "name": "@opspilot/memory",
+  "name": "@xops/memory",
   "version": "0.1.0",
-  "description": "Hybrid vector + keyword memory system for OpsPilot",
+  "description": "Hybrid vector + keyword memory system for xops",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@opspilot/core": "workspace:*",
+    "@xops/core": "workspace:*",
     "better-sqlite3": "^11.7.0",
     "openai": "^4.78.0"
   },

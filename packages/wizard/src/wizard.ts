@@ -9,7 +9,7 @@ import type { WizardOptions, WizardState } from './types';
 import * as prompts from './prompts';
 import * as steps from './steps';
 
-const DEFAULT_CONFIG_DIR = path.join(process.env.HOME || '~', '.opspilot');
+const DEFAULT_CONFIG_DIR = path.join(process.env.HOME || '~', '.xops');
 const DEFAULT_CONFIG_PATH = path.join(DEFAULT_CONFIG_DIR, 'config.yaml');
 const DEFAULT_WORKSPACE_PATH = path.join(DEFAULT_CONFIG_DIR, 'workspace');
 const DEFAULT_MEMORY_PATH = path.join(DEFAULT_CONFIG_DIR, 'memory.db');
@@ -108,13 +108,13 @@ export async function runWizard(options: WizardOptions): Promise<void> {
     if (!fs.existsSync(memoryPath)) {
       fs.writeFileSync(
         memoryPath,
-        `# OpsPilot Memory
+        `# xops Memory
 
-This file stores important information that OpsPilot should remember.
+This file stores important information that xops should remember.
 
 ## Important Notes
 
-- Add notes here that you want OpsPilot to remember across sessions
+- Add notes here that you want xops to remember across sessions
 - Include solutions to problems, preferences, and context about your infrastructure
 
 ## Runbooks
@@ -133,7 +133,7 @@ This file stores important information that OpsPilot should remember.
       const heartbeatPath = path.join(DEFAULT_WORKSPACE_PATH, 'HEARTBEAT.md');
       fs.writeFileSync(
         heartbeatPath,
-        `# OpsPilot Heartbeat Checklist
+        `# xops Heartbeat Checklist
 
 Run these checks every ${state.heartbeatInterval}.
 
@@ -181,13 +181,13 @@ Skills: ${state.enabledSkills.join(', ') || 'none'}`,
   // Next steps
   console.log();
   prompts.info('Next steps:');
-  console.log('  1. Start the gateway:', '  opspilot gateway start');
-  console.log('  2. Check status:', '      opspilot status');
+  console.log('  1. Start the gateway:', '  xops gateway start');
+  console.log('  2. Check status:', '      xops status');
   if (state.telegramEnabled) {
     console.log('  3. Message your bot on Telegram');
   }
 
-  prompts.showOutro('OpsPilot is ready! 🚀');
+  prompts.showOutro('xops is ready! 🚀');
 }
 
 /**
@@ -280,7 +280,7 @@ function generateConfig(state: WizardState): Record<string, unknown> {
       },
     },
     agent: {
-      name: 'OpsPilot',
+      name: 'xops',
       workspace: DEFAULT_WORKSPACE_PATH,
     },
   };

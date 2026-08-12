@@ -1,5 +1,5 @@
 /**
- * @opspilot/gateway - Gateway server with Hono
+ * @xops/gateway - Gateway server with Hono
  */
 
 export * from './types';

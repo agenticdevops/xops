@@ -7,10 +7,10 @@ import * as yaml from 'yaml';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { OpsPilotConfig } from './types';
+import type { xopsConfig } from './types';
 
 // Default config path
-export const DEFAULT_CONFIG_DIR = path.join(os.homedir(), '.opspilot');
+export const DEFAULT_CONFIG_DIR = path.join(os.homedir(), '.xops');
 export const DEFAULT_CONFIG_PATH = path.join(DEFAULT_CONFIG_DIR, 'config.yaml');
 export const DEFAULT_WORKSPACE_PATH = path.join(DEFAULT_CONFIG_DIR, 'workspace');
 export const DEFAULT_MEMORY_PATH = path.join(DEFAULT_CONFIG_DIR, 'memory.db');
@@ -56,7 +56,7 @@ export const MemoryConfigSchema = z.object({
   }).optional(),
 });
 
-export const OpsPilotConfigSchema = z.object({
+export const xopsConfigSchema = z.object({
   version: z.string(),
   meta: z.object({
     lastUpdated: z.string().optional(),
@@ -75,11 +75,11 @@ export const OpsPilotConfigSchema = z.object({
 /**
  * Load configuration from file
  */
-export async function loadConfig(configPath?: string): Promise<OpsPilotConfig> {
+export async function loadConfig(configPath?: string): Promise<xopsConfig> {
   const filePath = configPath ?? DEFAULT_CONFIG_PATH;
 
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Config file not found: ${filePath}. Run 'opspilot setup' first.`);
+    throw new Error(`Config file not found: ${filePath}. Run 'xops setup' first.`);
   }
 
   const content = fs.readFileSync(filePath, 'utf-8');
@@ -89,18 +89,18 @@ export async function loadConfig(configPath?: string): Promise<OpsPilotConfig> {
   const expanded = expandEnvVars(raw);
 
   // Validate
-  const result = OpsPilotConfigSchema.safeParse(expanded);
+  const result = xopsConfigSchema.safeParse(expanded);
   if (!result.success) {
     throw new Error(`Invalid config: ${result.error.message}`);
   }
 
-  return expanded as OpsPilotConfig;
+  return expanded as xopsConfig;
 }
 
 /**
  * Save configuration to file
  */
-export async function saveConfig(config: OpsPilotConfig, configPath?: string): Promise<void> {
+export async function saveConfig(config: xopsConfig, configPath?: string): Promise<void> {
   const filePath = configPath ?? DEFAULT_CONFIG_PATH;
   const dir = path.dirname(filePath);
 
@@ -128,7 +128,7 @@ export function configExists(configPath?: string): boolean {
 /**
  * Get default config
  */
-export function getDefaultConfig(): OpsPilotConfig {
+export function getDefaultConfig(): xopsConfig {
   return {
     version: '1',
     ai: {
@@ -179,7 +179,7 @@ export function getDefaultConfig(): OpsPilotConfig {
       port: 18789,
     },
     agent: {
-      name: 'OpsPilot',
+      name: 'xops',
       workspace: DEFAULT_WORKSPACE_PATH,
     },
   };

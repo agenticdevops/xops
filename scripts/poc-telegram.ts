@@ -3,7 +3,7 @@
  *   bun scripts/poc-telegram.ts
  * Namespace extracted from message ("ns <name>" or any troublesim-* token);
  * defaults to troublesim-s4. Scoped kubeconfig expected at
- * ~/.opspilot/workspace/kubeconfig-<namespace> (scripts/provision-poc-rbac.sh).
+ * ~/.xops/workspace/kubeconfig-<namespace> (scripts/provision-poc-rbac.sh).
  */
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -16,12 +16,12 @@ const tgRaw = config.channels.telegram as any;
 // config.yaml uses accounts.default.* layout; core schema predates it
 const tg = tgRaw?.token ? tgRaw : { ...tgRaw?.accounts?.default, enabled: tgRaw?.enabled };
 if (!tg?.token) {
-  console.error('telegram token missing in ~/.opspilot/config.yaml');
+  console.error('telegram token missing in ~/.xops/config.yaml');
   process.exit(1);
 }
 
 const HOME = process.env.HOME ?? '';
-const WORKSPACE = join(HOME, '.opspilot', 'workspace');
+const WORKSPACE = join(HOME, '.xops', 'workspace');
 const SKILLS = join(import.meta.dir, '..', 'packages', 'skills', 'bundled');
 
 interface RoutedIntent {
@@ -34,7 +34,7 @@ function routeIntent(text: string): RoutedIntent {
   const isDocker = /\b(docker|container)\b/i.test(text);
   if (isDocker) {
     const m = text.match(/\bcontainer\s+([a-z0-9][a-z0-9_.-]*)/i) ?? text.match(/\bdocker\s+([a-z0-9][a-z0-9_.-]*)/i);
-    return { profile: 'docker', target: m?.[1] ?? 'opspilot-victim' };
+    return { profile: 'docker', target: m?.[1] ?? 'xops-victim' };
   }
   const nsMatch = text.match(/\bns[:= ]\s*([a-z0-9-]+)/i) ?? text.match(/\b(troublesim-[a-z0-9-]+)\b/i);
   return { profile: 'k8s', target: nsMatch?.[1] ?? 'troublesim-s4' };
@@ -71,4 +71,4 @@ adapter.onMessage(async (incoming) => {
 
 await adapter.initialize();
 await adapter.start();
-console.log('[poc-tg] OpsPilot POC bridge up — message the bot.');
+console.log('[poc-tg] xops POC bridge up — message the bot.');

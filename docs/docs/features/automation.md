@@ -4,7 +4,9 @@ sidebar_position: 3
 
 # Automation
 
-Let OpsPilot work proactively with heartbeats, cron jobs, and scheduled tasks.
+> **Status: planned, not built.** Heartbeats, cron jobs, and morning briefings do not exist yet — the `@xops/automation` package is currently an empty stub. This is roadmap Phase 7. The description below is the target design.
+
+Let xops work proactively with heartbeats, cron jobs, and scheduled tasks.
 
 ## Overview
 
@@ -26,15 +28,15 @@ automation:
   heartbeat:
     enabled: true
     every: 30m
-    checklist: ~/.opspilot/workspace/HEARTBEAT.md
+    checklist: ~/.xops/workspace/HEARTBEAT.md
 ```
 
 ### Create Checklist
 
 ```markdown
-# ~/.opspilot/workspace/HEARTBEAT.md
+# ~/.xops/workspace/HEARTBEAT.md
 
-# OpsPilot Heartbeat Checklist
+# xops Heartbeat Checklist
 
 Run these checks every 30 minutes.
 
@@ -99,7 +101,7 @@ Recommended: Review and address within 1 hour.
 Run a heartbeat check now:
 
 ```bash
-opspilot heartbeat run
+xops heartbeat run
 ```
 
 ## Cron Jobs
@@ -162,20 +164,20 @@ Common schedules:
 
 ```bash
 # List all jobs
-opspilot cron list
+xops cron list
 
 # Add a job
-opspilot cron add \
+xops cron add \
   --name "daily-check" \
   --schedule "0 9 * * *" \
   --message "Check system health" \
   --deliver telegram
 
 # Remove a job
-opspilot cron remove --name "daily-check"
+xops cron remove --name "daily-check"
 
 # Run manually
-opspilot cron run --name "morning-briefing"
+xops cron run --name "morning-briefing"
 ```
 
 ## Morning Briefing
@@ -227,7 +229,7 @@ Have a productive day! 🚀
 
 ## Proactive Monitoring
 
-Configure OpsPilot to watch for specific conditions.
+Configure xops to watch for specific conditions.
 
 ### Cost Alerts
 

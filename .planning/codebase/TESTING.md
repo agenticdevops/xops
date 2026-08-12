@@ -53,7 +53,7 @@ Since no existing tests are present, the following patterns should be establishe
 import { expect } from 'bun:test';
 import { describe, it, beforeEach, afterEach } from 'bun:test';
 import { loadConfig, getDefaultConfig } from './config';
-import type { OpsPilotConfig } from './types';
+import type { xopsConfig } from './types';
 
 describe('Config Loading', () => {
   describe('loadConfig()', () => {
@@ -151,7 +151,7 @@ const mockTelegramConfig = {
   },
 };
 
-const mockOpsPilotConfig: OpsPilotConfig = {
+const mockxopsConfig: xopsConfig = {
   version: '1',
   ai: {
     provider: 'claude-code',
@@ -168,7 +168,7 @@ const mockOpsPilotConfig: OpsPilotConfig = {
 
 **Factory Pattern (Recommended):**
 ```typescript
-function createTestConfig(overrides?: Partial<OpsPilotConfig>): OpsPilotConfig {
+function createTestConfig(overrides?: Partial<xopsConfig>): xopsConfig {
   return {
     ...getDefaultConfig(),
     ...overrides,
@@ -274,7 +274,7 @@ describe('Error Handling', () => {
   it('should throw on invalid configuration', () => {
     const invalidConfig = { version: '1', ai: {} }; // Missing required fields
     expect(() => {
-      OpsPilotConfigSchema.parse(invalidConfig);
+      xopsConfigSchema.parse(invalidConfig);
     }).toThrow('Invalid');
   });
 

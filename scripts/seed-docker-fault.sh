@@ -9,7 +9,7 @@
 set -euo pipefail
 
 FAULT="${1:-oom}"
-NAME="opspilot-victim"
+NAME="xops-victim"
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
 

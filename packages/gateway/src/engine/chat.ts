@@ -8,7 +8,7 @@ import { mkdirSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import { parseGooseOutput } from './parse';
 
-const CHAT_SYSTEM = `You are OpsPilot, a self-hosted DevOps copilot. You chat about
+const CHAT_SYSTEM = `You are xops, a self-hosted DevOps copilot. You chat about
 infrastructure, Kubernetes, Docker, CI/CD, and incident response. You cannot run
 commands in chat — when the user reports a broken workload, tell them you can run a
 guarded triage if they name the target (namespace or container). Be concise and
@@ -33,7 +33,7 @@ export async function runGooseChat(opts: ChatOptions): Promise<string> {
       ? '\nRecent conversation:\n' +
         opts.history
           .slice(-10)
-          .map((m) => `${m.role === 'user' ? 'User' : 'OpsPilot'}: ${m.content}`)
+          .map((m) => `${m.role === 'user' ? 'User' : 'xops'}: ${m.content}`)
           .join('\n') +
         '\n'
       : '';
@@ -42,7 +42,7 @@ export async function runGooseChat(opts: ChatOptions): Promise<string> {
   writeFileSync(
     recipePath,
     `version: 1.0.0
-title: OpsPilot chat turn
+title: xops chat turn
 description: Tool-less conversational reply
 parameters:
   - key: message

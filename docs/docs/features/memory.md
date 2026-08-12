@@ -4,7 +4,9 @@ sidebar_position: 1
 
 # Memory System
 
-OpsPilot remembers everything - solutions, runbooks, and context from past conversations.
+> **Status: built, not yet wired.** The `@xops/memory` package (SQLite + vector search) exists, but recalled context is not yet injected into agent runs. Tracked as roadmap Phase 6. The description below is the target design.
+
+xops remembers everything - solutions, runbooks, and context from past conversations.
 
 ## Overview
 
@@ -47,7 +49,7 @@ Memory is enabled by default. Add content to your workspace:
 
 ```bash
 # Create a runbook
-cat > ~/.opspilot/workspace/memory/runbooks/redis.md << 'EOF'
+cat > ~/.xops/workspace/memory/runbooks/redis.md << 'EOF'
 # Redis Troubleshooting
 
 ## Connection Timeout
@@ -65,12 +67,12 @@ If Redis is OOMKilled:
 EOF
 ```
 
-Now OpsPilot can answer questions about Redis:
+Now xops can answer questions about Redis:
 
 ```
 You: How do I fix Redis connection timeouts?
 
-OpsPilot: Based on your runbook, here's how to fix Redis connection timeouts:
+xops: Based on your runbook, here's how to fix Redis connection timeouts:
 
 1. First, verify Redis is running: `redis-cli ping`
 2. Check network connectivity between your app and Redis
@@ -82,7 +84,7 @@ Would you like me to check the current Redis status?
 ## Workspace Structure
 
 ```
-~/.opspilot/workspace/
+~/.xops/workspace/
 ├── MEMORY.md              # Quick notes (always indexed)
 ├── HEARTBEAT.md           # Heartbeat checklist
 └── memory/                # Additional memory files
@@ -158,10 +160,10 @@ Consider RI for:
 
 ```bash
 # Basic search
-opspilot memory search "Redis connection"
+xops memory search "Redis connection"
 
 # Limit results
-opspilot memory search "deployment rollback" -n 10
+xops memory search "deployment rollback" -n 10
 ```
 
 ### API Search
@@ -174,12 +176,12 @@ curl -X POST http://localhost:18789/memory/search \
 
 ### In Conversation
 
-Just ask naturally - OpsPilot automatically searches memory:
+Just ask naturally - xops automatically searches memory:
 
 ```
 You: How did we fix the Redis issue last month?
 
-OpsPilot: Based on your incident notes from January 15th:
+xops: Based on your incident notes from January 15th:
 
 The issue was Redis maxclients limit reached. The fix was:
 1. Increased maxclients from 100 to 500
@@ -197,7 +199,7 @@ memory:
   provider: auto              # Embedding provider
   store:
     driver: sqlite
-    path: ~/.opspilot/memory.db
+    path: ~/.xops/memory.db
   chunking:
     tokens: 400               # Chunk size in tokens
     overlap: 80               # Overlap between chunks
@@ -242,7 +244,7 @@ Smaller chunks = more precise results, larger = more context.
 Manually sync the index:
 
 ```bash
-opspilot memory sync
+xops memory sync
 ```
 
 ### Full Reindex
@@ -250,18 +252,18 @@ opspilot memory sync
 Rebuild the entire index:
 
 ```bash
-opspilot memory reindex
+xops memory reindex
 ```
 
 ### Check Status
 
 ```bash
-opspilot memory status
+xops memory status
 
 # Output:
 📊 Memory Status
 
-✓ Database: ~/.opspilot/memory.db
+✓ Database: ~/.xops/memory.db
   Chunks: 156
   Files: 12
   Last sync: 2 minutes ago
@@ -315,12 +317,12 @@ Fix:
 
 Check database exists:
 ```bash
-ls -la ~/.opspilot/memory.db
+ls -la ~/.xops/memory.db
 ```
 
 Reindex if corrupted:
 ```bash
-opspilot memory reindex
+xops memory reindex
 ```
 
 ### Results not relevant
@@ -333,10 +335,10 @@ opspilot memory reindex
 
 Check file permissions:
 ```bash
-ls -la ~/.opspilot/workspace/
+ls -la ~/.xops/workspace/
 ```
 
 Manual sync:
 ```bash
-opspilot memory sync
+xops memory sync
 ```

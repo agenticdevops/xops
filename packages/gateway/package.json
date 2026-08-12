@@ -1,5 +1,5 @@
 {
-  "name": "@opspilot/gateway",
+  "name": "@xops/gateway",
   "version": "0.1.0",
   "description": "Main gateway server with Hono and AOF runtime integration",
   "type": "module",
@@ -20,11 +20,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@opspilot/core": "workspace:*",
-    "@opspilot/memory": "workspace:*",
-    "@opspilot/channels": "workspace:*",
-    "@opspilot/skills": "workspace:*",
-    "@opspilot/automation": "workspace:*",
+    "@xops/core": "workspace:*",
+    "@xops/memory": "workspace:*",
+    "@xops/channels": "workspace:*",
+    "@xops/skills": "workspace:*",
+    "@xops/automation": "workspace:*",
     "hono": "^4.7.0",
     "@anthropic-ai/sdk": "^0.35.0"
   },

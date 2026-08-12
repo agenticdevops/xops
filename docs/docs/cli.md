@@ -2,9 +2,9 @@
 sidebar_position: 5
 ---
 
-# Running OpsPilot
+# Running xops
 
-OpsPilot is early-stage: today you drive it with a handful of scripts. A packaged `opspilot` CLI (setup wizard, supervised service) is on the roadmap; these scripts are what actually works right now.
+xops is early-stage: today you drive it with a handful of scripts. A packaged `xops` CLI (setup wizard, supervised service) is on the roadmap; these scripts are what actually works right now.
 
 ## Action runs
 
@@ -39,7 +39,7 @@ Messages mentioning `docker` or `container <name>` route to the docker triage sk
 
 ## Run artifacts
 
-Every engine run leaves an audit trail in its workdir (`~/.opspilot/workspace/`):
+Every engine run leaves an audit trail in its workdir (`~/.xops/workspace/`):
 
 | File | Contents |
 |---|---|

@@ -1,5 +1,5 @@
 /**
- * @opspilot/wizard - Interactive setup wizard
+ * @xops/wizard - Interactive setup wizard
  */
 
 export * from './types';

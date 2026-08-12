@@ -4,7 +4,9 @@ sidebar_position: 1
 
 # Telegram Setup
 
-Connect OpsPilot to Telegram for mobile access from anywhere.
+> **Status: working.** Telegram is the supported channel today, via the bridge script (`bun scripts/poc-telegram.ts`). A packaged setup wizard is on the roadmap.
+
+Connect xops to Telegram for mobile access from anywhere.
 
 ## Why Telegram?
 
@@ -17,8 +19,8 @@ Connect OpsPilot to Telegram for mobile access from anywhere.
 
 1. Open Telegram and search for [@BotFather](https://t.me/BotFather)
 2. Send `/newbot`
-3. Choose a name (e.g., "My OpsPilot")
-4. Choose a username (must end in `bot`, e.g., `my_opspilot_bot`)
+3. Choose a name (e.g., "My xops")
+4. Choose a username (must end in `bot`, e.g., `my_xops_bot`)
 5. Copy the **API token** - you'll need this!
 
 ```
@@ -32,11 +34,11 @@ Use this token to access the HTTP API:
 Never share your bot token publicly. Anyone with the token can control your bot.
 :::
 
-## Step 2: Configure OpsPilot
+## Step 2: Configure xops
 
 ### During Setup
 
-When running `opspilot setup`, select "Yes" when asked about Telegram:
+When running `xops setup`, select "Yes" when asked about Telegram:
 
 ```
 ? Enable Telegram bot? Yes
@@ -46,7 +48,7 @@ When running `opspilot setup`, select "Yes" when asked about Telegram:
 
 ### Manual Configuration
 
-Edit `~/.opspilot/config.yaml`:
+Edit `~/.xops/config.yaml`:
 
 ```yaml
 channels:
@@ -63,7 +65,7 @@ channels:
 ## Step 3: Start and Test
 
 ```bash
-opspilot gateway start
+xops gateway start
 ```
 
 Look for:
@@ -76,7 +78,7 @@ Now open Telegram and message your bot:
 ```
 You: /start
 
-OpsPilot: Hello! I'm OpsPilot, your 24/7 DevOps copilot.
+xops: Hello! I'm xops, your 24/7 DevOps copilot.
 ```
 
 ## Access Control
@@ -116,13 +118,13 @@ Without access control, anyone who discovers your bot can use it to run commands
 
 ## Bot Commands
 
-OpsPilot responds to these built-in commands:
+xops responds to these built-in commands:
 
 | Command | Description |
 |---------|-------------|
 | `/start` | Welcome message and capabilities |
 | `/help` | Show available commands |
-| `/status` | Check OpsPilot status |
+| `/status` | Check xops status |
 | `/memory <query>` | Search memory |
 
 You can also just send natural language messages:
@@ -130,7 +132,7 @@ You can also just send natural language messages:
 ```
 You: Check if any pods are failing in production
 
-OpsPilot: I'll check the pod status in the production namespace...
+xops: I'll check the pod status in the production namespace...
 ```
 
 ## Multiple Accounts
@@ -168,7 +170,7 @@ Then set the environment variable:
 
 ```bash
 export TELEGRAM_BOT_TOKEN="7123456789:AAHdq..."
-opspilot gateway start
+xops gateway start
 ```
 
 ## Webhook Mode (Advanced)
@@ -200,7 +202,7 @@ Your username is not in the `allowFrom` list. Check:
 
 ### Bot not responding
 
-1. Check gateway is running: `opspilot gateway status`
+1. Check gateway is running: `xops gateway status`
 2. Verify token is correct
 3. Check gateway logs for errors
 4. Try `/start` to test basic connectivity
@@ -211,7 +213,7 @@ Another instance is using the same bot. Only one process can poll a bot at a tim
 
 ```bash
 # Find and stop other instances
-ps aux | grep opspilot
+ps aux | grep xops
 kill <pid>
 ```
 

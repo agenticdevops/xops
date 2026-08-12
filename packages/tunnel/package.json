@@ -1,5 +1,5 @@
 {
-  "name": "@opspilot/tunnel",
+  "name": "@xops/tunnel",
   "version": "0.1.0",
   "description": "Tunnel providers for Tailscale, ngrok, and Cloudflare",
   "type": "module",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@opspilot/core": "workspace:*"
+    "@xops/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

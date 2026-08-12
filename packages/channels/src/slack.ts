@@ -70,7 +70,7 @@ export class SlackAdapter implements ChannelAdapter {
 
       if (!text) {
         await say({
-          text: "Hello! I'm OpsPilot. How can I help you today?",
+          text: "Hello! I'm xops. How can I help you today?",
           thread_ts: event.thread_ts || event.ts,
         });
         return;
@@ -112,7 +112,7 @@ export class SlackAdapter implements ChannelAdapter {
     });
 
     // Handle slash command (optional)
-    this.app.command('/opspilot', async ({ command, ack, respond }) => {
+    this.app.command('/xops', async ({ command, ack, respond }) => {
       await ack();
 
       const incoming: IncomingMessage = {

@@ -6,7 +6,7 @@
   Telegram / CLI
         │
         ▼
-  OpsPilot gateway (Bun + Hono)
+  xops gateway (Bun + Hono)
         │
         ├── chat turn ────► goose run (tool-less recipe — cannot execute commands)
         │
@@ -20,12 +20,12 @@
                      infrastructure (scoped credentials)
         ▲
         │
-  independent verification (OpsPilot re-checks real state after the run)
+  independent verification (xops re-checks real state after the run)
 ```
 
 ## Engine: goose, always
 
-Every LLM interaction — chat or action — is a `goose run` subprocess with a generated recipe. OpsPilot contains **no LLM client of its own**: no Anthropic SDK, no API keys in OpsPilot config. Providers and models are goose configuration, overridable per run.
+Every LLM interaction — chat or action — is a `goose run` subprocess with a generated recipe. xops contains **no LLM client of its own**: no Anthropic SDK, no API keys in xops config. Providers and models are goose configuration, overridable per run.
 
 Key modules (`packages/gateway/src/engine/`):
 
@@ -50,4 +50,4 @@ The recipe directs the agent to read `SKILL.md` via shell — no dependence on a
 
 ## Why verification is separate
 
-The agent's report is treated as a claim, never a result. After every action run, `verify.ts` inspects the actual system (pods Ready, container running/healthy) with OpsPilot's own credentials, and the verdict is attached to the reply. A run that "succeeded" per the model but left the system broken reports **NOT verified**.
+The agent's report is treated as a claim, never a result. After every action run, `verify.ts` inspects the actual system (pods Ready, container running/healthy) with xops's own credentials, and the verdict is attached to the reply. A run that "succeeded" per the model but left the system broken reports **NOT verified**.

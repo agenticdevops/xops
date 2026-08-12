@@ -1,5 +1,5 @@
 /**
- * @opspilot/skills - Skill loader and registry
+ * @xops/skills - Skill loader and registry
  */
 
 export * from './loader';

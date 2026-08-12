@@ -63,7 +63,7 @@
 ## Configuration
 
 **Environment:**
-- YAML-based configuration in `~/.opspilot/config.yaml` (default location `~/.opspilot/`)
+- YAML-based configuration in `~/.xops/config.yaml` (default location `~/.xops/`)
 - Environment variable expansion in config via `${VAR_NAME}` syntax
 - Default config generator in `packages/core/src/config.ts` with defaults for all services
 
@@ -94,9 +94,9 @@
 - Optional: kubectl, aws-cli, or other DevOps tools (loaded as skills)
 
 **Storage:**
-- Default config: `~/.opspilot/config.yaml`
-- Default workspace: `~/.opspilot/workspace/`
-- Default memory DB: `~/.opspilot/memory.db` (SQLite)
+- Default config: `~/.xops/config.yaml`
+- Default workspace: `~/.xops/workspace/`
+- Default memory DB: `~/.xops/memory.db` (SQLite)
 
 ---
 

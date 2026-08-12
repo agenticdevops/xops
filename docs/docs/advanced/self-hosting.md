@@ -1,6 +1,6 @@
 # Self-Hosting
 
-OpsPilot is self-hosted by design: it runs on your machine or server, your credentials never leave your infrastructure, and the LLM is whatever you configure goose to use — including a fully local model.
+xops is self-hosted by design: it runs on your machine or server, your credentials never leave your infrastructure, and the LLM is whatever you configure goose to use — including a fully local model.
 
 ## Requirements
 
@@ -18,25 +18,25 @@ ollama pull qwen2.5:32b
 # 2. Point goose at it
 goose configure   # choose ollama provider
 
-# 3. Run OpsPilot with explicit provider selection
-OPSPILOT_PROVIDER=ollama OPSPILOT_MODEL=qwen2.5:32b bun scripts/poc-telegram.ts
+# 3. Run xops with explicit provider selection
+XOPS_PROVIDER=ollama XOPS_MODEL=qwen2.5:32b bun scripts/poc-telegram.ts
 ```
 
 `note: small local models (7B and under) reliably run the diagnose flow but often narrate fixes instead of executing them. For dependable fix execution use a larger local model or configure a hosted provider in goose.`
 
 ## Hosted-model setup
 
-Configure any goose-supported provider (`goose configure`) — Anthropic, OpenAI, Groq, and others. The API key lives in goose's keyring, not in OpsPilot's config.
+Configure any goose-supported provider (`goose configure`) — Anthropic, OpenAI, Groq, and others. The API key lives in goose's keyring, not in xops's config.
 
 ## Running as a service
 
-A supervised `opspilot start` service is on the roadmap. Today, run the Telegram bridge under your process manager of choice:
+A supervised `xops start` service is on the roadmap. Today, run the Telegram bridge under your process manager of choice:
 
 ```
-nohup bun scripts/poc-telegram.ts > ~/.opspilot/workspace/bridge.log 2>&1 &
+nohup bun scripts/poc-telegram.ts > ~/.xops/workspace/bridge.log 2>&1 &
 ```
 
 ## What leaves your machine
 
 - Prompts and command output go to whichever LLM provider goose is configured with — **nothing** with a local ollama model.
-- OpsPilot itself makes no external calls except the Telegram Bot API (when the bridge is running).
+- xops itself makes no external calls except the Telegram Bot API (when the bridge is running).

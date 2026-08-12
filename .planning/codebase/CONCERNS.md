@@ -69,7 +69,7 @@
 ## Security Considerations
 
 **API keys stored plaintext in config file:**
-- Risk: Users save API keys to `~/.opspilot/config.yaml` which is committed to git or readable by other users on shared machine
+- Risk: Users save API keys to `~/.xops/config.yaml` which is committed to git or readable by other users on shared machine
 - Files: `/packages/wizard/src/wizard.ts` (line 104), `/packages/core/src/config.ts` (line 117)
 - Current mitigation: Docs advise using env vars (e.g., `${ANTHROPIC_API_KEY}`), but wizard offers direct key input as alternative
 - Recommendations: (1) Force env var expansion in wizard, reject direct keys. (2) Validate file permissions (0600) at config load. (3) Add warning if key appears plaintext.

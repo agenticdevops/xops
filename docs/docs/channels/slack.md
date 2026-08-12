@@ -4,11 +4,13 @@ sidebar_position: 2
 
 # Slack Setup
 
-Connect OpsPilot to Slack for team-wide access.
+> **Status: partial / untested.** A Slack adapter exists in code but is not wired to the goose engine or tested end-to-end. **Telegram is the only supported channel today.** The description below is the target design.
+
+Connect xops to Slack for team-wide access.
 
 ## Why Slack?
 
-- **Team Collaboration** - Everyone can interact with OpsPilot
+- **Team Collaboration** - Everyone can interact with xops
 - **Thread Support** - Keep conversations organized
 - **Channel Integration** - Post to incident channels
 - **Enterprise Ready** - SSO, compliance, audit logs
@@ -18,7 +20,7 @@ Connect OpsPilot to Slack for team-wide access.
 1. Go to [api.slack.com/apps](https://api.slack.com/apps)
 2. Click **Create New App**
 3. Choose **From scratch**
-4. Name it "OpsPilot" and select your workspace
+4. Name it "xops" and select your workspace
 5. Click **Create App**
 
 ## Step 2: Configure App Permissions
@@ -46,12 +48,12 @@ Navigate to **Event Subscriptions**:
 
 ## Step 3: Enable Socket Mode
 
-OpsPilot uses Socket Mode (no public URL needed):
+xops uses Socket Mode (no public URL needed):
 
 1. Navigate to **Socket Mode**
 2. Toggle **Enable Socket Mode** to On
 3. Create an **App-Level Token**:
-   - Name: "opspilot-socket"
+   - Name: "xops-socket"
    - Scope: `connections:write`
 4. Copy the token (starts with `xapp-`)
 
@@ -62,7 +64,7 @@ OpsPilot uses Socket Mode (no public URL needed):
 3. Authorize the permissions
 4. Copy the **Bot User OAuth Token** (starts with `xoxb-`)
 
-## Step 5: Configure OpsPilot
+## Step 5: Configure xops
 
 ### During Setup
 
@@ -78,7 +80,7 @@ OpsPilot uses Socket Mode (no public URL needed):
 
 ### Manual Configuration
 
-Edit `~/.opspilot/config.yaml`:
+Edit `~/.xops/config.yaml`:
 
 ```yaml
 channels:
@@ -93,7 +95,7 @@ channels:
 ## Step 6: Start and Test
 
 ```bash
-opspilot gateway start
+xops gateway start
 ```
 
 Look for:
@@ -107,62 +109,62 @@ Look for:
 ```
 You: Hello!
 
-OpsPilot: Hello! I'm OpsPilot, your 24/7 DevOps copilot.
+xops: Hello! I'm xops, your 24/7 DevOps copilot.
 ```
 
 **In a Channel (mention the bot):**
 ```
-You: @OpsPilot check pod status in production
+You: @xops check pod status in production
 
-OpsPilot: I'll check the pod status in the production namespace...
+xops: I'll check the pod status in the production namespace...
 ```
 
 ## Usage Patterns
 
 ### Direct Messages
 
-Send a DM to OpsPilot for private conversations:
+Send a DM to xops for private conversations:
 
 ```
 You: Show me the AWS costs for this month
-OpsPilot: Here's your AWS cost breakdown for January...
+xops: Here's your AWS cost breakdown for January...
 ```
 
 ### Channel Mentions
 
-Mention @OpsPilot in any channel it's invited to:
+Mention @xops in any channel it's invited to:
 
 ```
 #incidents
-@OpsPilot what's the status of the api-service deployment?
+@xops what's the status of the api-service deployment?
 ```
 
 ### Thread Replies
 
-OpsPilot replies in threads to keep channels organized:
+xops replies in threads to keep channels organized:
 
 ```
 #devops
-@OpsPilot rollback the frontend deployment
-  └── OpsPilot: I'll rollback the frontend deployment...
-      └── OpsPilot: ✓ Rollback complete. Previous version restored.
+@xops rollback the frontend deployment
+  └── xops: I'll rollback the frontend deployment...
+      └── xops: ✓ Rollback complete. Previous version restored.
 ```
 
 ## Slash Commands (Optional)
 
-Add a `/opspilot` slash command for quick access:
+Add a `/xops` slash command for quick access:
 
 1. Navigate to **Slash Commands**
 2. Click **Create New Command**
 3. Configure:
-   - Command: `/opspilot`
+   - Command: `/xops`
    - Description: "Ask your DevOps copilot"
    - Usage Hint: `[your question]`
 4. Since we use Socket Mode, no URL is needed
 
 Usage:
 ```
-/opspilot list failed pods
+/xops list failed pods
 ```
 
 ## Using Environment Variables
@@ -179,7 +181,7 @@ channels:
 ```bash
 export SLACK_APP_TOKEN="xapp-..."
 export SLACK_BOT_TOKEN="xoxb-..."
-opspilot gateway start
+xops gateway start
 ```
 
 ## Multiple Workspaces
@@ -218,7 +220,7 @@ The app needs additional permissions:
 
 ### Bot doesn't respond to @mentions
 
-1. Invite the bot to the channel: `/invite @OpsPilot`
+1. Invite the bot to the channel: `/invite @xops`
 2. Check that `app_mention` event is subscribed
 3. Verify Socket Mode is enabled
 

@@ -1,5 +1,5 @@
 {
-  "name": "@opspilot/skills",
+  "name": "@xops/skills",
   "version": "0.1.0",
   "description": "Skill loader and bundled DevOps skills",
   "type": "module",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@opspilot/core": "workspace:*",
+    "@xops/core": "workspace:*",
     "gray-matter": "^4.0.3"
   },
   "devDependencies": {

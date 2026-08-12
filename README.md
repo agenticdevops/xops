@@ -1,8 +1,8 @@
-# OpsPilot
+# xops
 
 > Your 24/7 DevOps Copilot that actually does the work
 
-OpsPilot is a personal DevOps AI agent that runs on your infrastructure, connects to your favorite chat apps, and proactively helps manage your systems.
+xops is a personal DevOps AI agent that runs on your infrastructure, connects to your favorite chat apps, and proactively helps manage your systems.
 
 ## Features
 
@@ -17,13 +17,13 @@ OpsPilot is a personal DevOps AI agent that runs on your infrastructure, connect
 
 ```bash
 # Install
-curl -sSL https://opspilot.sh/install | bash
+curl -sSL https://xops.sh/install | bash
 
 # Setup (interactive wizard)
-opspilot setup
+xops setup
 
 # Check status
-opspilot status
+xops status
 ```
 
 ## Demo
@@ -43,7 +43,7 @@ No action needed. Have a great day!
 ```
 You: How did we fix the Redis issue last month?
 
-OpsPilot: Found 2 relevant memories:
+xops: Found 2 relevant memories:
 
 1. 2024-12-15: Redis connection pooling fix
    - Increased pool size from 10 to 50
@@ -60,12 +60,12 @@ Want me to show the full notes?
 ```
 You: rollback api-service
 
-OpsPilot: I see api-service in prod-cluster.
+xops: I see api-service in prod-cluster.
 Rollback to previous version? [Yes/No]
 
 You: yes
 
-OpsPilot:
+xops:
 $ kubectl rollout undo deployment/api-service -n prod
 deployment.apps/api-service rolled back
 
@@ -76,7 +76,7 @@ Error rate dropping. ✓
 ## Configuration
 
 ```yaml
-# ~/.opspilot/config.yaml
+# ~/.xops/config.yaml
 version: "1"
 
 ai:
@@ -101,12 +101,12 @@ automation:
   heartbeat:
     enabled: true
     every: 30m
-    checklist: ~/.opspilot/HEARTBEAT.md
+    checklist: ~/.xops/HEARTBEAT.md
 ```
 
 ## Skills
 
-OpsPilot comes with pre-built DevOps skills:
+xops comes with pre-built DevOps skills:
 
 | Skill | Description |
 |-------|-------------|
@@ -120,8 +120,8 @@ OpsPilot comes with pre-built DevOps skills:
 
 ```bash
 # Clone and install
-git clone https://github.com/agenticops/opspilot
-cd opspilot
+git clone https://github.com/agenticops/xops
+cd xops
 bun install
 
 # Run CLI
@@ -133,7 +133,7 @@ bun run dev
 
 ## Architecture
 
-OpsPilot is built on:
+xops is built on:
 - **Bun** - Fast JavaScript runtime
 - **Hono** - Lightweight web framework
 - **grammY** - Telegram Bot API
@@ -146,6 +146,6 @@ Apache 2.0
 
 ## Links
 
-- [Documentation](https://opspilot.sh/docs)
-- [Discord Community](https://discord.gg/opspilot)
-- [GitHub Issues](https://github.com/agenticops/opspilot/issues)
+- [Documentation](https://xops.sh/docs)
+- [Discord Community](https://discord.gg/xops)
+- [GitHub Issues](https://github.com/agenticops/xops/issues)

@@ -4,7 +4,7 @@ description: 'Diagnose and fix Docker containers that are unhealthy, restarting,
   or exited unexpectedly. Use when: a container flaps, healthcheck fails, or a
   service container is down.'
 metadata:
-  opspilot:
+  xops:
     version: 0.1.0
     tier: worker
     risk: medium

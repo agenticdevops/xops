@@ -24,7 +24,7 @@
 - Single letter `_` for unused parameters in callbacks
 
 **Types & Interfaces:**
-- PascalCase for all interfaces: `OpsPilotConfig`, `ChannelAdapter`, `GatewayServer`, `MemoryManager`
+- PascalCase for all interfaces: `xopsConfig`, `ChannelAdapter`, `GatewayServer`, `MemoryManager`
 - Suffix `Config` for configuration types: `AIConfig`, `TelegramConfig`, `WebConfig`
 - Suffix `Result`, `Response`, or `Stats` for return types: `DeliveryResult`, `MemorySearchResult`, `GatewayStats`
 - Suffix `Options` for constructor/function parameters: `RuntimeOptions`, `GatewayOptions`, `ProcessMessageOptions`
@@ -62,7 +62,7 @@
 1. Node.js built-ins: `import { spawn } from 'child_process'`, `import * as fs from 'fs'`
 2. Third-party packages: `import { z } from 'zod'`, `import { Hono } from 'hono'`, `import { Bot } from 'grammy'`
 3. Internal packages (via path imports): `import { AIRuntime } from './runtime'`
-4. Type imports: `import type { OpsPilotConfig } from '../../core/src/types'`
+4. Type imports: `import type { xopsConfig } from '../../core/src/types'`
 
 **Path Aliases:**
 - Monorepo uses relative paths: `../../core/src/types` (not configured as aliases)

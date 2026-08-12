@@ -10,7 +10,7 @@ import * as pc from 'picocolors';
  */
 export function showIntro(): void {
   console.log();
-  p.intro(pc.bgCyan(pc.black(' OpsPilot Setup ')));
+  p.intro(pc.bgCyan(pc.black(' xops Setup ')));
 }
 
 /**

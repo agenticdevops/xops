@@ -68,7 +68,7 @@ export class TelegramAdapter implements ChannelAdapter {
 
     // Handle /start command
     this.bot.command('start', async (ctx) => {
-      await ctx.reply(`Hello! I'm OpsPilot, your 24/7 DevOps copilot.
+      await ctx.reply(`Hello! I'm xops, your 24/7 DevOps copilot.
 
 Send me a message and I'll help you with:
 - Kubernetes troubleshooting
@@ -83,9 +83,9 @@ Type your question or command to get started!`);
     this.bot.command('help', async (ctx) => {
       await ctx.reply(`Available commands:
 
-/start - Start interacting with OpsPilot
+/start - Start interacting with xops
 /help - Show this help message
-/status - Check OpsPilot status
+/status - Check xops status
 /memory <query> - Search memory
 
 Or just send a message with your DevOps question!`);

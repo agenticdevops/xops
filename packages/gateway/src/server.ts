@@ -6,14 +6,14 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serve } from 'bun';
-import type { OpsPilotConfig } from '../../core/src/types';
+import type { xopsConfig } from '../../core/src/types';
 import { runGooseChat } from './engine/chat';
 import { join } from 'path';
 import { homedir } from 'os';
 import type { ChatMessage, ConversationContext, GatewayStats } from './types';
 
 export interface GatewayOptions {
-  config: OpsPilotConfig;
+  config: xopsConfig;
   onMemorySearch?: (query: string, limit?: number) => Promise<Array<{ content: string; score: number }>>;
 }
 
@@ -27,7 +27,7 @@ export interface ProcessMessageOptions {
 export class GatewayServer {
   private app: Hono;
   private server: ReturnType<typeof serve> | null = null;
-  private config: OpsPilotConfig;
+  private config: xopsConfig;
   private conversations: Map<string, ConversationContext> = new Map();
   private stats: GatewayStats;
   private startTime: Date;
@@ -81,8 +81,8 @@ export class GatewayServer {
         config: {
           engine: {
             runner: 'goose',
-            provider: process.env.OPSPILOT_PROVIDER ?? 'goose-default',
-            model: process.env.OPSPILOT_MODEL ?? 'goose-default',
+            provider: process.env.XOPS_PROVIDER ?? 'goose-default',
+            model: process.env.XOPS_MODEL ?? 'goose-default',
           },
           channels: {
             telegram: this.config.channels.telegram?.enabled ?? false,
@@ -292,10 +292,10 @@ export class GatewayServer {
     const memoryBlock = memoryContext.length > 0 ? `Relevant context from memory:\n${memoryContext.join('\n')}\n\n${message}` : message;
     return runGooseChat({
       message: memoryBlock,
-      workdir: join(homedir(), '.opspilot', 'workspace', 'goose-chat'),
+      workdir: join(homedir(), '.xops', 'workspace', 'goose-chat'),
       history: context.messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
-      provider: process.env.OPSPILOT_PROVIDER,
-      model: process.env.OPSPILOT_MODEL,
+      provider: process.env.XOPS_PROVIDER,
+      model: process.env.XOPS_MODEL,
     });
   }
 

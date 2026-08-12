@@ -42,7 +42,7 @@ export function renderRecipe(opts: RecipeOptions): string {
   const p = `{{ ${profile.paramKey} }}`;
   return `version: 1.0.0
 title: ${title}
-description: OpsPilot-generated recipe driving the ${opts.skill} skill
+description: xops-generated recipe driving the ${opts.skill} skill
 parameters:
   - key: ${profile.paramKey}
     input_type: string

@@ -5,22 +5,22 @@
 ## Directory Layout
 
 ```
-opspilot/
+xops/
 ├── apps/
 │   ├── cli/                  # Main CLI entry point (Commander)
-│   │   ├── bin/opspilot      # Shell launcher script
+│   │   ├── bin/xops      # Shell launcher script
 │   │   └── src/index.ts      # All CLI commands
 │   ├── tui/                  # Ink terminal UI (stub — empty src/)
 │   └── web/                  # React dashboard (stub — empty src/)
 ├── packages/
-│   ├── core/                 # @opspilot/core — types, config, utils (foundation)
-│   ├── wizard/               # @opspilot/wizard — Clack setup wizard
-│   ├── channels/             # @opspilot/channels — Telegram/Slack adapters
-│   ├── memory/               # @opspilot/memory — SQLite hybrid search
-│   ├── skills/               # @opspilot/skills — SKILL.md loader + bundled skills
-│   ├── gateway/              # @opspilot/gateway — Hono server + AI runtime
-│   ├── automation/           # @opspilot/automation — heartbeat/cron (stub — empty src/)
-│   └── tunnel/               # @opspilot/tunnel — Tailscale/ngrok (stub — empty src/)
+│   ├── core/                 # @xops/core — types, config, utils (foundation)
+│   ├── wizard/               # @xops/wizard — Clack setup wizard
+│   ├── channels/             # @xops/channels — Telegram/Slack adapters
+│   ├── memory/               # @xops/memory — SQLite hybrid search
+│   ├── skills/               # @xops/skills — SKILL.md loader + bundled skills
+│   ├── gateway/              # @xops/gateway — Hono server + AI runtime
+│   ├── automation/           # @xops/automation — heartbeat/cron (stub — empty src/)
+│   └── tunnel/               # @xops/tunnel — Tailscale/ngrok (stub — empty src/)
 ├── docs/                     # Docusaurus documentation site (separate lockfiles)
 ├── scripts/                  # Helper scripts
 ├── .planning/                # GSD planning documents (codebase/ maps)
@@ -71,8 +71,8 @@ opspilot/
 - Contains: `package.json` + empty `src/` — no implementation yet
 
 **`apps/cli/`:**
-- Purpose: The `opspilot` command
-- Contains: `bin/opspilot` launcher, `src/index.ts` with all Commander commands (setup, status, gateway, memory, cron, heartbeat, chat)
+- Purpose: The `xops` command
+- Contains: `bin/xops` launcher, `src/index.ts` with all Commander commands (setup, status, gateway, memory, cron, heartbeat, chat)
 - Key files: `apps/cli/src/index.ts`
 
 **`apps/tui/` and `apps/web/`:**
@@ -92,12 +92,12 @@ opspilot/
 
 **Entry Points:**
 - `apps/cli/src/index.ts`: CLI commands and gateway/channel wiring
-- `apps/cli/bin/opspilot`: Shell launcher (mapped via root `package.json` `bin`)
+- `apps/cli/bin/xops`: Shell launcher (mapped via root `package.json` `bin`)
 - `packages/gateway/src/server.ts`: HTTP/WS server (`GatewayServer.start`)
 - `packages/wizard/src/wizard.ts`: `runWizard` setup flow
 
 **Configuration:**
-- `packages/core/src/config.ts`: Config schema, paths (`~/.opspilot/config.yaml`), defaults
+- `packages/core/src/config.ts`: Config schema, paths (`~/.xops/config.yaml`), defaults
 - `turbo.json`: Task pipeline definition
 - `tsconfig.json`: Shared compiler options (per-package `tsconfig.json` extend/override)
 - `bunfig.toml`: Bun settings
@@ -119,15 +119,15 @@ opspilot/
 - Skill definitions: `bundled/<skill-name>/SKILL.md` with kebab-case directory names (`k8s-debug`, `incident-diagnose`)
 
 **Directories:**
-- Packages: kebab/lowercase npm-scoped `@opspilot/<name>` in `packages/<name>/`
+- Packages: kebab/lowercase npm-scoped `@xops/<name>` in `packages/<name>/`
 - Apps: lowercase in `apps/<name>/`
 
 **Code:**
 - Classes: PascalCase (`GatewayServer`, `MemoryManager`, `TelegramAdapter`, `AIRuntime`)
-- Interfaces: PascalCase with `Config`/`Options`/`Result` suffixes (`OpsPilotConfig`, `RuntimeOptions`, `DeliveryResult`)
+- Interfaces: PascalCase with `Config`/`Options`/`Result` suffixes (`xopsConfig`, `RuntimeOptions`, `DeliveryResult`)
 - Functions: camelCase verbs (`loadConfig`, `runWizard`, `checkSkillEligibility`)
 - Constants: SCREAMING_SNAKE_CASE (`DEFAULT_CONFIG_PATH`, `MAX_MESSAGE_LENGTH`)
-- Zod schemas: `<Type>Schema` (`AIConfigSchema`, `OpsPilotConfigSchema`)
+- Zod schemas: `<Type>Schema` (`AIConfigSchema`, `xopsConfigSchema`)
 
 ## Where to Add New Code
 
@@ -161,7 +161,7 @@ opspilot/
 
 **Do NOT:**
 - Create files in repository root (per `CLAUDE.md`)
-- Duplicate types across packages — import from `@opspilot/core`
+- Duplicate types across packages — import from `@xops/core`
 
 ## Special Directories
 
@@ -180,7 +180,7 @@ opspilot/
 - Generated: By GSD tooling/agents
 - Committed: Yes
 
-**`~/.opspilot/` (user home, outside repo):**
+**`~/.xops/` (user home, outside repo):**
 - Purpose: Runtime data — `config.yaml`, `workspace/`, `memory.db` (paths defined in `packages/core/src/config.ts:13-16`)
 - Generated: Yes (by wizard/runtime)
 - Committed: Not applicable

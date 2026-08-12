@@ -1,5 +1,5 @@
 /**
- * OpsPilot execution engine: goose subprocess + fail-closed guard +
+ * xops execution engine: goose subprocess + fail-closed guard +
  * independent verification. Reply is composed from the agent's report AND
  * an independent cluster-state verdict — never the report alone.
  */

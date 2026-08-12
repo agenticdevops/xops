@@ -41,16 +41,16 @@
 **Databases:**
 - SQLite 3
   - Provider: better-sqlite3 11.7.0 (native bindings)
-  - Connection: File-based database at `~/.opspilot/memory.db` (configurable)
+  - Connection: File-based database at `~/.xops/memory.db` (configurable)
   - Client: better-sqlite3 with WAL mode enabled
   - Schema: Memory chunks table, FTS (full-text search) index, embedding cache
   - Implementation: `packages/memory/src/manager.ts` lines 69-88
 
 **File Storage:**
 - Local filesystem only
-  - Configuration: `~/.opspilot/` directory structure
-  - Workspace: `~/.opspilot/workspace/` for agent files and context
-  - Memory DB: `~/.opspilot/memory.db` for vector store
+  - Configuration: `~/.xops/` directory structure
+  - Workspace: `~/.xops/workspace/` for agent files and context
+  - Memory DB: `~/.xops/memory.db` for vector store
 
 **Caching:**
 - SQLite embedding cache table (`EMBEDDING_CACHE_TABLE`)
@@ -137,7 +137,7 @@
 - Hybrid search: 70% vector weight, 30% keyword weight (configurable)
 
 **Secrets location:**
-- Default: `~/.opspilot/config.yaml` (user-readable YAML file)
+- Default: `~/.xops/config.yaml` (user-readable YAML file)
 - Alternative sources: Environment variables via `${VAR_NAME}` expansion syntax in config
 - Token sources: 'env' (environment variable), 'file' (config file), 'keychain' (OS keychain - not implemented)
 

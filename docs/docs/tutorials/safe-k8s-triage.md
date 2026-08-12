@@ -9,7 +9,7 @@ This time, you are going to give the agent access to a Kubernetes cluster — an
 ## What will you learn
 
 - Why the guard shim alone is not enough for shared infrastructure
-- How OpsPilot provisions a namespace-scoped kubeconfig (RBAC as the hard boundary)
+- How xops provisions a namespace-scoped kubeconfig (RBAC as the hard boundary)
 - The full flow: break a workload → agent fixes it under both boundaries → independent verification
 
 ## Pre Requisites
@@ -19,7 +19,7 @@ This time, you are going to give the agent access to a Kubernetes cluster — an
 - A local test cluster:
 
 ```
-kind create cluster --name opspilot-lab
+kind create cluster --name xops-lab
 ```
 
 ## Two boundaries, not one
@@ -43,7 +43,7 @@ kind create cluster --name opspilot-lab
 
 where,
 
-- **Guard shim** — OpsPilot's process-level filter. Fast, auditable, but it lives on the same machine as the agent.
+- **Guard shim** — xops's process-level filter. Fast, auditable, but it lives on the same machine as the agent.
 - **Scoped kubeconfig** — enforced by Kubernetes itself. Even a fully compromised agent process holding this file can only act inside its namespace.
 
 ## Break a workload
@@ -78,14 +78,14 @@ spec:
 To **apply** it:
 
 ```
-kubectl create ns opspilot-lab-ns
-kubectl -n opspilot-lab-ns apply -f k8s/lab/broken-liveness.yaml
+kubectl create ns xops-lab-ns
+kubectl -n xops-lab-ns apply -f k8s/lab/broken-liveness.yaml
 ```
 
 Wait a minute, then **observe**:
 
 ```
-kubectl -n opspilot-lab-ns get pods
+kubectl -n xops-lab-ns get pods
 ```
 
 ```
@@ -100,16 +100,16 @@ nginx serves on port 80; the probe checks port 9999. Every probe failure kills t
 ## Provision the scoped credential
 
 ```
-bash scripts/provision-poc-rbac.sh opspilot-lab-ns kind-opspilot-lab
+bash scripts/provision-poc-rbac.sh xops-lab-ns kind-xops-lab
 ```
 
-This creates a ServiceAccount, a Role limited to the verbs the triage skill needs (get, list, watch, patch on workloads — no delete, no secrets), a RoleBinding, and writes a kubeconfig with a 2-hour token to `~/.opspilot/workspace/kubeconfig-opspilot-lab-ns`.
+This creates a ServiceAccount, a Role limited to the verbs the triage skill needs (get, list, watch, patch on workloads — no delete, no secrets), a RoleBinding, and writes a kubeconfig with a 2-hour token to `~/.xops/workspace/kubeconfig-xops-lab-ns`.
 
 **Prove the jail works** before trusting it:
 
 ```
-KUBECONFIG=~/.opspilot/workspace/kubeconfig-opspilot-lab-ns kubectl get pods
-KUBECONFIG=~/.opspilot/workspace/kubeconfig-opspilot-lab-ns kubectl get pods -n kube-system
+KUBECONFIG=~/.xops/workspace/kubeconfig-xops-lab-ns kubectl get pods
+KUBECONFIG=~/.xops/workspace/kubeconfig-xops-lab-ns kubectl get pods -n kube-system
 ```
 
 ```
@@ -117,7 +117,7 @@ KUBECONFIG=~/.opspilot/workspace/kubeconfig-opspilot-lab-ns kubectl get pods -n 
 NAME                                   READY   STATUS             RESTARTS   AGE
 liveness-probe-test-77464549fd-dpvmg   0/1     CrashLoopBackOff   6          6m
 ...
-Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:opspilot-lab-ns:opspilot-agent" cannot list resource "pods" in API group "" in the namespace "kube-system"
+Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:xops-lab-ns:xops-agent" cannot list resource "pods" in API group "" in the namespace "kube-system"
 ```
 
 The first command works; the second is refused by the API server itself. That refusal is the hard boundary.
@@ -125,26 +125,26 @@ The first command works; the second is refused by the API server itself. That re
 ## Run the agent
 
 ```
-bun scripts/poc-run.ts k8s opspilot-lab-ns
+bun scripts/poc-run.ts k8s xops-lab-ns
 ```
 
 While it runs, note that the k8s runbook (`packages/skills/bundled/k8s-pod-restart-triage/SKILL.md`) has a decision-table row exactly for this: liveness probe targeting a port no container serves → patch the probe to the real port.
 
 ```
 [ Expected output (guard log) ]
-  ALLOW kubectl get pods -n opspilot-lab-ns -o wide
-  ALLOW kubectl describe pod -n opspilot-lab-ns -l app=liveness-probe-test
-  ALLOW kubectl get deployment liveness-probe-test -n opspilot-lab-ns -o json
-  ALLOW kubectl patch deployment liveness-probe-test -n opspilot-lab-ns --type=json -p=[
+  ALLOW kubectl get pods -n xops-lab-ns -o wide
+  ALLOW kubectl describe pod -n xops-lab-ns -l app=liveness-probe-test
+  ALLOW kubectl get deployment liveness-probe-test -n xops-lab-ns -o json
+  ALLOW kubectl patch deployment liveness-probe-test -n xops-lab-ns --type=json -p=[
   {"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/port", "value": 80},
   ...
-  ALLOW kubectl rollout status deployment/liveness-probe-test -n opspilot-lab-ns --timeout=120s
+  ALLOW kubectl rollout status deployment/liveness-probe-test -n xops-lab-ns --timeout=120s
 ```
 
 ## Verify the real state
 
 ```
-kubectl -n opspilot-lab-ns get pods
+kubectl -n xops-lab-ns get pods
 ```
 
 ```
@@ -164,14 +164,14 @@ The guard pins every command to the run's namespace. Test it: with the scoped ku
 bun scripts/poc-run.ts k8s kube-system
 ```
 
-**Observe** where this fails. Which boundary stops it first — the guard shim or the RBAC token? Check `~/.opspilot/workspace/goose-poc/guard.jsonl` for the answer.
+**Observe** where this fails. Which boundary stops it first — the guard shim or the RBAC token? Check `~/.xops/workspace/goose-poc/guard.jsonl` for the answer.
 
 ## Cleanup
 
 ```
-kubectl delete ns opspilot-lab-ns
-kind delete cluster --name opspilot-lab
-rm -f ~/.opspilot/workspace/kubeconfig-opspilot-lab-ns
+kubectl delete ns xops-lab-ns
+kind delete cluster --name xops-lab
+rm -f ~/.xops/workspace/kubeconfig-xops-lab-ns
 ```
 
 #### Summary

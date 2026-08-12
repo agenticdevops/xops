@@ -1,4 +1,4 @@
-# OpsPilot CLI - Quick Start Guide
+# xops CLI - Quick Start Guide
 
 ## Installation & Setup
 
@@ -47,7 +47,7 @@ bun run cli setup
 bun run cli gateway start
 
 # 3. In another terminal, test chat
-bun run cli chat "Hello, OpsPilot!"
+bun run cli chat "Hello, xops!"
 
 # 4. Check status
 bun run cli status
@@ -72,9 +72,9 @@ bun run test
 
 ## Configuration Location
 
-- Config file: `~/.opspilot/config.yaml`
-- Workspace: `~/.opspilot/workspace/`
-- Memory DB: `~/.opspilot/workspace/memory/memory.db`
+- Config file: `~/.xops/config.yaml`
+- Workspace: `~/.xops/workspace/`
+- Memory DB: `~/.xops/workspace/memory/memory.db`
 
 ## Troubleshooting
 
@@ -90,22 +90,22 @@ bun run cli gateway start
 
 **Reset everything:**
 ```bash
-rm -rf ~/.opspilot
+rm -rf ~/.xops
 bun run cli setup
 ```
 
-**Using wrong opspilot binary (global vs local):**
+**Using wrong xops binary (global vs local):**
 If `bun run cli` is using a globally installed version instead of the local one:
 
 ```bash
-# Check if global opspilot exists
-which opspilot
+# Check if global xops exists
+which xops
 
 # Uninstall global npm package
-npm uninstall -g @opspilot/cli
+npm uninstall -g @xops/cli
 
 # Verify it's gone
-which opspilot  # Should return nothing
+which xops  # Should return nothing
 
 # Now use local version
 bun run cli <command>

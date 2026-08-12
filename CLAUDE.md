@@ -1,10 +1,10 @@
-# OpsPilot - Personal DevOps AI Agent
+# xops - Personal DevOps AI Agent
 
 > "Your 24/7 DevOps Copilot that actually does the work"
 
 ## Project Overview
 
-OpsPilot is a personal DevOps AI agent that runs 24/7 on your infrastructure. It provides:
+xops is a personal DevOps AI agent that runs 24/7 on your infrastructure. It provides:
 - **5-minute setup wizard** for instant deployment
 - **Multi-channel chat** (Telegram, Slack, Web)
 - **Proactive automation** (morning briefings, heartbeats, cron jobs)
@@ -14,18 +14,18 @@ OpsPilot is a personal DevOps AI agent that runs 24/7 on your infrastructure. It
 ## Architecture
 
 ```
-opspilot/
+xops/
 ├── packages/
-│   ├── @opspilot/core/       # Config, types, utils
-│   ├── @opspilot/wizard/     # Setup wizard (Clack)
-│   ├── @opspilot/channels/   # Telegram, Slack, Web adapters
-│   ├── @opspilot/memory/     # Hybrid vector + keyword search
-│   ├── @opspilot/skills/     # Skill loader + bundled skills
-│   ├── @opspilot/automation/ # Heartbeat, cron, subagents
-│   ├── @opspilot/tunnel/     # Tailscale, ngrok
-│   └── @opspilot/gateway/    # Hono server + runtime
+│   ├── @xops/core/       # Config, types, utils
+│   ├── @xops/wizard/     # Setup wizard (Clack)
+│   ├── @xops/channels/   # Telegram, Slack, Web adapters
+│   ├── @xops/memory/     # Hybrid vector + keyword search
+│   ├── @xops/skills/     # Skill loader + bundled skills
+│   ├── @xops/automation/ # Heartbeat, cron, subagents
+│   ├── @xops/tunnel/     # Tailscale, ngrok
+│   └── @xops/gateway/    # Hono server + runtime
 ├── apps/
-│   ├── cli/                  # opspilot CLI
+│   ├── cli/                  # xops CLI
 │   ├── web/                  # React dashboard
 │   └── tui/                  # Ink terminal UI
 └── docs/                     # Docusaurus site
@@ -57,8 +57,8 @@ bun run test
 
 This project follows **contracts-first development**:
 
-1. Define types in `@opspilot/core/types.ts` first
-2. Validate with Zod schemas in `@opspilot/core/config.ts`
+1. Define types in `@xops/core/types.ts` first
+2. Validate with Zod schemas in `@xops/core/config.ts`
 3. Implement packages following the type contracts
 4. No duplicate types across packages
 

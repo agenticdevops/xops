@@ -1,7 +1,7 @@
 {
-  "name": "@opspilot/core",
+  "name": "@xops/core",
   "version": "0.1.0",
-  "description": "Core types, configuration, and utilities for OpsPilot",
+  "description": "Core types, configuration, and utilities for xops",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

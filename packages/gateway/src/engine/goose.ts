@@ -6,7 +6,7 @@
  *  - goose survives SIGTERM waiting out in-flight streams; kill the process
  *    group, escalate to SIGKILL after a grace period
  * Guarded tools (kubectl/docker) are PATH-shimmed per run; grants come from
- * the skill's frontmatter (metadata.opspilot.grants) with a legacy fallback.
+ * the skill's frontmatter (metadata.xops.grants) with a legacy fallback.
  */
 import { spawn } from 'child_process';
 import { accessSync, chmodSync, constants, cpSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -48,7 +48,7 @@ const LEGACY_GRANTS: Record<string, string[]> = {
   'k8s-pod-restart-triage': ['get', 'describe', 'logs', 'patch', 'set', 'rollout', 'scale', 'top', 'events'],
 };
 
-/** Parse `grants: [a, b, c]` from SKILL.md frontmatter (metadata.opspilot.grants). */
+/** Parse `grants: [a, b, c]` from SKILL.md frontmatter (metadata.xops.grants). */
 export function parseSkillGrants(skillMd: string): string[] | null {
   const m = skillMd.match(/grants:\s*\[([^\]]*)\]/);
   if (!m) return null;
@@ -96,7 +96,7 @@ export function prepWorkdir(opts: EngineRunOptions): {
   writeFileSync(
     shimPath,
     `#!/usr/bin/env bash
-# OpsPilot fail-closed ${tool} guard shim (generated per run; policy baked in)
+# xops fail-closed ${tool} guard shim (generated per run; policy baked in)
 decision=$(bun "${guardCli}" --tool ${shellQuote(tool)} --grants ${shellQuote(grants.join(','))} --ns ${shellQuote(nsLiteral)} --target ${shellQuote(targetLiteral)} --log ${shellQuote(guardLogPath)} -- "$@")
 if [ "$decision" = "ALLOW" ]; then
   exec ${shellQuote(realTool)} "$@"

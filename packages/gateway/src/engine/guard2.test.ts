@@ -88,8 +88,8 @@ describe('evaluateCommand (two-gate: skill grant + tier ceiling)', () => {
   });
 
   test('docker mutations pinned to run target (scoping gap, security review)', () => {
-    const opts = { tool: 'docker', skillGrants: DOCKER_GRANTS, target: 'opspilot-victim' };
-    expect(evaluateCommand({ ...opts, args: ['restart', 'opspilot-victim'] }).allowed).toBe(true);
+    const opts = { tool: 'docker', skillGrants: DOCKER_GRANTS, target: 'xops-victim' };
+    expect(evaluateCommand({ ...opts, args: ['restart', 'xops-victim'] }).allowed).toBe(true);
     expect(evaluateCommand({ ...opts, args: ['restart', 'production-db'] }).allowed).toBe(false);
     expect(evaluateCommand({ ...opts, args: ['update', '--memory', '32m', 'other-app'] }).allowed).toBe(false);
     // reads stay unpinned — diagnose needs ps/inspect across matches

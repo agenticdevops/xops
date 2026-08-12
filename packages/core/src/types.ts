@@ -1,5 +1,5 @@
 /**
- * Core types for OpsPilot
+ * Core types for xops
  */
 
 export interface AIConfig {
@@ -159,7 +159,7 @@ export interface AgentConfig {
   files?: string[];
 }
 
-export interface OpsPilotConfig {
+export interface xopsConfig {
   version: string;
   meta?: {
     lastUpdated?: string;

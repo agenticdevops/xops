@@ -31,7 +31,7 @@
         ▼                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Core (shared foundation): types + Zod config + utils        │
-│  `packages/core/src/` — config at `~/.opspilot/config.yaml`  │
+│  `packages/core/src/` — config at `~/.xops/config.yaml`  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -56,17 +56,17 @@
 
 **Key Characteristics:**
 - Bun workspaces + Turborepo (`turbo.json`) for build orchestration across `packages/*` and `apps/*`
-- Contracts-first: types defined in `@opspilot/core` (`packages/core/src/types.ts`), validated with Zod (`packages/core/src/config.ts`)
+- Contracts-first: types defined in `@xops/core` (`packages/core/src/types.ts`), validated with Zod (`packages/core/src/config.ts`)
 - Adapter pattern for channels (`ChannelAdapter` interface in `packages/channels/src/types.ts`)
 - Facade pattern for AI backends (`AIRuntime` in `packages/gateway/src/runtime.ts` delegates to `ClaudeCodeRuntime` or `AnthropicAPIRuntime`)
-- Dependency inversion for memory: gateway receives `onMemorySearch` callback instead of importing `@opspilot/memory` directly (`packages/gateway/src/server.ts:15`)
+- Dependency inversion for memory: gateway receives `onMemorySearch` callback instead of importing `@xops/memory` directly (`packages/gateway/src/server.ts:15`)
 
 ## Layers
 
 **Apps Layer:**
 - Purpose: User-facing entry points
 - Location: `apps/cli/`, `apps/tui/` (stub), `apps/web/` (stub)
-- Contains: Commander CLI (`apps/cli/src/index.ts`), shell launcher (`apps/cli/bin/opspilot`)
+- Contains: Commander CLI (`apps/cli/src/index.ts`), shell launcher (`apps/cli/bin/xops`)
 - Depends on: `packages/core`, `packages/wizard`, `packages/gateway`, `packages/memory`, `packages/channels` (via dynamic imports)
 - Used by: End users
 
@@ -124,7 +124,7 @@
 
 **State Management:**
 - Conversations held in an in-memory `Map<string, ConversationContext>` on `GatewayServer` — no persistence across restarts (`packages/gateway/src/server.ts:30`)
-- Persistent config at `~/.opspilot/config.yaml`; memory DB at `~/.opspilot/memory.db` (`packages/core/src/config.ts:13-16`)
+- Persistent config at `~/.xops/config.yaml`; memory DB at `~/.xops/memory.db` (`packages/core/src/config.ts:13-16`)
 - Wizard accumulates `WizardState` mutably across steps (`packages/wizard/src/steps.ts`)
 
 ## Key Abstractions
@@ -144,7 +144,7 @@
 - Examples: `packages/skills/bundled/k8s-debug/`, `packages/skills/bundled/incident-diagnose/`, `packages/skills/bundled/argocd-sync/`, `packages/skills/bundled/loki-search/`, `packages/skills/bundled/prometheus-query/`
 - Pattern: Directory scan + gray-matter parse; eligibility gated on required binaries/env vars (`packages/skills/src/loader.ts:117`)
 
-**OpsPilotConfig:**
+**xopsConfig:**
 - Purpose: Single config contract for the whole system
 - Examples: `packages/core/src/types.ts:162`, Zod schema at `packages/core/src/config.ts:59`
 - Pattern: YAML file → `${ENV_VAR}` expansion → Zod `safeParse` → typed config
@@ -156,20 +156,20 @@
 
 ## Entry Points
 
-**CLI (`opspilot`):**
-- Location: `apps/cli/src/index.ts` (launcher: `apps/cli/bin/opspilot`, root `package.json` `bin` field)
-- Triggers: `bun run cli <command>` or installed `opspilot` binary
+**CLI (`xops`):**
+- Location: `apps/cli/src/index.ts` (launcher: `apps/cli/bin/xops`, root `package.json` `bin` field)
+- Triggers: `bun run cli <command>` or installed `xops` binary
 - Responsibilities: Commands `setup` (wizard), `status`, `gateway start|stop|status` (wires memory + gateway + channel adapters, handles SIGINT shutdown), `memory` (stubs), `cron` (stub), `heartbeat` (stub), `chat` (HTTP client to running gateway)
 
 **Gateway HTTP server:**
 - Location: `packages/gateway/src/server.ts:316` (`start()` via Bun `serve`)
-- Triggers: `opspilot gateway start`; default bind `127.0.0.1:18789` (`packages/core/src/config.ts:177-180`)
+- Triggers: `xops gateway start`; default bind `127.0.0.1:18789` (`packages/core/src/config.ts:177-180`)
 - Responsibilities: Routes `/health`, `/status`, `/chat`, `/chat/stream`, `/memory/search`, `/conversations`, `/webhook/telegram`, `/webhook/slack`; WebSocket chat
 
 **Setup wizard:**
 - Location: `packages/wizard/src/wizard.ts` (`runWizard`), steps in `packages/wizard/src/steps.ts`
-- Triggers: `opspilot setup [--quickstart|--advanced|--reset]`
-- Responsibilities: AI provider selection (detects `claude` CLI), channel/tool/skill configuration, writes `~/.opspilot/config.yaml`
+- Triggers: `xops setup [--quickstart|--advanced|--reset]`
+- Responsibilities: AI provider selection (detects `claude` CLI), channel/tool/skill configuration, writes `~/.xops/config.yaml`
 
 ## Architectural Constraints
 
@@ -186,7 +186,7 @@
 
 **What happens:** Packages/apps import siblings via deep relative paths, e.g. `import type { AIConfig } from '../../core/src/types'` (`packages/gateway/src/runtime.ts:7`) and `import { runWizard } from '../../../packages/wizard/src'` (`apps/cli/src/index.ts:8-9`)
 **Why it's wrong:** Bypasses each package's `exports`/`dist` contract, couples to source layout, and breaks if packages are published or moved
-**Do this instead:** Import via workspace names (`@opspilot/core`, `@opspilot/wizard`) as declared in `packages/core/package.json` `exports`
+**Do this instead:** Import via workspace names (`@xops/core`, `@xops/wizard`) as declared in `packages/core/package.json` `exports`
 
 ### Duplicate message/config types across packages
 
@@ -202,7 +202,7 @@
 
 ### Loose Zod validation with record(z.any())
 
-**What happens:** `OpsPilotConfigSchema` validates `channels`, `tools`, `skills`, `automation`, `gateway`, `agent` as `z.record(z.any())` (`packages/core/src/config.ts:66-72`)
+**What happens:** `xopsConfigSchema` validates `channels`, `tools`, `skills`, `automation`, `gateway`, `agent` as `z.record(z.any())` (`packages/core/src/config.ts:66-72`)
 **Why it's wrong:** Invalid channel/gateway config passes validation and fails later at runtime (e.g. `config.gateway.port` accessed unchecked in `packages/gateway/src/server.ts:317`)
 **Do this instead:** Define full Zod schemas mirroring the TypeScript interfaces in `packages/core/src/types.ts`
 
@@ -211,7 +211,7 @@
 **Strategy:** Throw `Error` at boundaries; catch at entry points and report to user (CLI prints via picocolors, HTTP routes return `{ error }` JSON with status codes)
 
 **Patterns:**
-- Config loading throws with actionable message ("Run 'opspilot setup' first") (`packages/core/src/config.ts:82`)
+- Config loading throws with actionable message ("Run 'xops setup' first") (`packages/core/src/config.ts:82`)
 - Gateway routes wrap handlers in try/catch, return `c.json({ error }, 500|400|404)` (`packages/gateway/src/server.ts:157-161`)
 - Degrade gracefully: memory search failures log and continue without context (`packages/gateway/src/server.ts:123-126`); channel adapter startup failures warn but do not abort gateway (`apps/cli/src/index.ts:130-132`); embedding provider failure falls back to keyword-only search (`packages/memory/src/manager.ts:82-86`)
 - Subprocess errors surfaced with install hints ("Is Claude Code installed?") (`packages/gateway/src/runtime.ts:75`)

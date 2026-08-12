@@ -1,5 +1,5 @@
 /**
- * @opspilot/core - Core types, configuration, and utilities
+ * @xops/core - Core types, configuration, and utilities
  */
 
 export * from './config';

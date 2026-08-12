@@ -1,7 +1,7 @@
 {
-  "name": "@opspilot/wizard",
+  "name": "@xops/wizard",
   "version": "0.1.0",
-  "description": "Interactive setup wizard for OpsPilot",
+  "description": "Interactive setup wizard for xops",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@opspilot/core": "workspace:*",
+    "@xops/core": "workspace:*",
     "@clack/prompts": "^0.9.0",
     "picocolors": "^1.1.1"
   },

@@ -25,7 +25,7 @@ function HomepageHeader() {
           <Link
             className="button button--outline button--lg"
             style={{marginLeft: '1rem', color: 'white', borderColor: 'white'}}
-            href="https://github.com/agenticops/opspilot">
+            href="https://github.com/agenticops/xops">
             View on GitHub
           </Link>
         </div>
@@ -56,7 +56,7 @@ const FeatureList: FeatureItem[] = [
     emoji: '💬',
     description: (
       <>
-        Talk to OpsPilot via Telegram, Slack, or web chat. Get notifications
+        Talk to xops via Telegram, Slack, or web chat. Get notifications
         and alerts wherever you are.
       </>
     ),
@@ -86,7 +86,7 @@ const FeatureList: FeatureItem[] = [
     emoji: '⚡',
     description: (
       <>
-        Morning briefings, heartbeat checks, and scheduled tasks. OpsPilot
+        Morning briefings, heartbeat checks, and scheduled tasks. xops
         works for you even when you're not watching.
       </>
     ),
@@ -137,7 +137,7 @@ function QuickExample(): ReactNode {
           <div className="col col--6">
             <Heading as="h2">See It In Action</Heading>
             <p style={{fontSize: '1.1rem', marginBottom: '1.5rem'}}>
-              Ask OpsPilot anything about your infrastructure. It understands context,
+              Ask xops anything about your infrastructure. It understands context,
               remembers past solutions, and takes action.
             </p>
             <Link
@@ -158,7 +158,7 @@ function QuickExample(): ReactNode {
               <div style={{color: '#94a3b8', marginBottom: '0.5rem'}}>You:</div>
               <div style={{marginBottom: '1rem'}}>Why is the api-service pod crashing?</div>
 
-              <div style={{color: '#94a3b8', marginBottom: '0.5rem'}}>OpsPilot:</div>
+              <div style={{color: '#94a3b8', marginBottom: '0.5rem'}}>xops:</div>
               <div>
                 The pod is in CrashLoopBackOff due to OOMKilled.
                 <br /><br />
@@ -183,7 +183,7 @@ export default function Home(): ReactNode {
   return (
     <Layout
       title="Your 24/7 DevOps Copilot"
-      description="OpsPilot is a personal AI agent that runs on your infrastructure and helps you manage DevOps tasks through natural conversation.">
+      description="xops is a personal AI agent that runs on your infrastructure and helps you manage DevOps tasks through natural conversation.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

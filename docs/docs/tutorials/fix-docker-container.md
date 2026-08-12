@@ -4,17 +4,17 @@ sidebar_position: 1
 
 # Fixing a Crashing Container with a Guarded Agent
 
-In this lab, you are going to break a Docker container on purpose, hand it to OpsPilot, and study how a guarded agent run actually works — the runbook, the guard decisions, and the independent verification. Everything runs on your own machine; no cluster, no cloud account.
+In this lab, you are going to break a Docker container on purpose, hand it to xops, and study how a guarded agent run actually works — the runbook, the guard decisions, and the independent verification. Everything runs on your own machine; no cluster, no cloud account.
 
 ## What will you learn
 
-- How an OpsPilot **skill** (executable runbook) is structured
+- How an xops **skill** (executable runbook) is structured
 - How the **fail-closed guard** decides which commands the agent may run
-- Why OpsPilot verifies system state itself instead of trusting the agent's report
+- Why xops verifies system state itself instead of trusting the agent's report
 
 ## Pre Requisites
 
-- OpsPilot installed and `bun test` passing — see [Getting Started](../getting-started.md)
+- xops installed and `bun test` passing — see [Getting Started](../getting-started.md)
 - Docker running locally
 - goose 1.45+ with a configured provider
 
@@ -56,12 +56,12 @@ To **seed** the fault:
 bash scripts/seed-docker-fault.sh oom
 ```
 
-This starts `opspilot-victim`: a Python process allocating 24MB inside a 16MB memory limit, with `--restart on-failure:3`.
+This starts `xops-victim`: a Python process allocating 24MB inside a 16MB memory limit, with `--restart on-failure:3`.
 
 **Observe** what happens over the next half minute:
 
 ```
-docker ps -a --filter name=opspilot-victim --format '{{.Names}} {{.Status}}'
+docker ps -a --filter name=xops-victim --format '{{.Names}} {{.Status}}'
 ```
 
 The container cycles through `Restarting (137)` and settles at `Exited (137)` once its restart budget is spent. Exit code 137 is the kernel's OOM kill. Why does it never reach `Up`?
@@ -71,7 +71,7 @@ The container cycles through `Restarting (137)` and settles at `Exited (137)` on
 The agent will run this script — run it yourself first so you know what evidence it sees:
 
 ```
-bash packages/skills/bundled/docker-container-triage/scripts/diagnose.sh opspilot-victim
+bash packages/skills/bundled/docker-container-triage/scripts/diagnose.sh xops-victim
 ```
 
 ```
@@ -88,7 +88,7 @@ Match this against the decision table yourself: `oom_killed == true`, exit 137, 
 ## Hand it to the agent
 
 ```
-bun scripts/poc-run.ts docker opspilot-victim
+bun scripts/poc-run.ts docker xops-victim
 ```
 
 The run takes one to three minutes. When it completes, study the guard log section:
@@ -96,23 +96,23 @@ The run takes one to three minutes. When it completes, study the guard log secti
 ```
 [ Expected output ]
 [poc] guard decisions: 5
-  ALLOW docker ps -a --filter name=opspilot-victim --format {{.ID}}
+  ALLOW docker ps -a --filter name=xops-victim --format {{.ID}}
   ALLOW docker inspect 9982033976ac
   ALLOW docker logs --tail 20 9982033976ac
-  ALLOW docker update --memory 33554432 --memory-swap 33554432 opspilot-victim
-  ALLOW docker restart opspilot-victim
+  ALLOW docker update --memory 33554432 --memory-swap 33554432 xops-victim
+  ALLOW docker restart xops-victim
 ```
 
 Read it as a story: three read-only commands (that's the diagnose script executing under the shim), then exactly the fix the decision table mapped — memory doubled to 32MB, restart. No exploration, no improvisation, no destructive commands attempted.
 
-Every one of these lines is also in `~/.opspilot/workspace/goose-poc/guard.jsonl` — the audit trail, one JSON record per decision, including the risk tier of each command.
+Every one of these lines is also in `~/.xops/workspace/goose-poc/guard.jsonl` — the audit trail, one JSON record per decision, including the risk tier of each command.
 
 ## Verify the real state
 
-OpsPilot already verified independently — but check yourself anyway:
+xops already verified independently — but check yourself anyway:
 
 ```
-docker inspect opspilot-victim --format 'status={{.State.Status}} oom={{.State.OOMKilled}} mem={{.HostConfig.Memory}} restarts={{.RestartCount}}'
+docker inspect xops-victim --format 'status={{.State.Status}} oom={{.State.OOMKilled}} mem={{.HostConfig.Memory}} restarts={{.RestartCount}}'
 ```
 
 ```
@@ -128,7 +128,7 @@ Seed the other fault the script supports and run the agent against it:
 
 ```
 bash scripts/seed-docker-fault.sh exit0
-bun scripts/poc-run.ts docker opspilot-victim
+bun scripts/poc-run.ts docker xops-victim
 ```
 
 **Observe** the agent's report. `exit0` is a container that exits cleanly — a one-shot. Which decision-table row does the evidence match? Does the agent loop forever restarting it, and why not?
@@ -136,7 +136,7 @@ bun scripts/poc-run.ts docker opspilot-victim
 ## Cleanup
 
 ```
-docker rm -f opspilot-victim
+docker rm -f xops-victim
 ```
 
 #### Summary
@@ -145,7 +145,7 @@ You watched a guarded agent follow a runbook end to end: deterministic evidence 
 
 ##### Reading List
 
-- [goose recipes](https://block.github.io/goose/docs/guides/recipes/) — how OpsPilot drives the engine
+- [goose recipes](https://block.github.io/goose/docs/guides/recipes/) — how xops drives the engine
 - [Docker restart policies](https://docs.docker.com/engine/containers/start-containers-automatically/)
 
 **Search Keywords**

@@ -1,5 +1,5 @@
 /**
- * @opspilot/channels - Channel adapters
+ * @xops/channels - Channel adapters
  */
 
 export * from './types';

@@ -1,6 +1,6 @@
 # Security Model
 
-OpsPilot's safety design assumes the model **will** eventually emit a dangerous command — by hallucination, prompt injection, or a poisoned log line it read during diagnosis. Safety comes from boundaries around the agent, not from trusting the prompt.
+xops's safety design assumes the model **will** eventually emit a dangerous command — by hallucination, prompt injection, or a poisoned log line it read during diagnosis. Safety comes from boundaries around the agent, not from trusting the prompt.
 
 ## Boundaries, strongest first
 

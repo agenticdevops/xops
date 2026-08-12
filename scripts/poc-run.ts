@@ -7,12 +7,12 @@ import { runGooseSkill } from '../packages/gateway/src/engine/goose';
 import type { EngineProfile } from '../packages/gateway/src/engine/recipe';
 import { join } from 'path';
 
-const provider = process.env.OPSPILOT_PROVIDER ?? 'ollama';
+const provider = process.env.XOPS_PROVIDER ?? 'ollama';
 const profile = (process.argv[2] ?? 'k8s') as EngineProfile;
-const target = process.argv[3] ?? (profile === 'docker' ? 'opspilot-victim' : 'troublesim-s4');
+const target = process.argv[3] ?? (profile === 'docker' ? 'xops-victim' : 'troublesim-s4');
 const kubeconfig =
   profile === 'k8s'
-    ? process.argv[4] ?? join(process.env.HOME ?? '', '.opspilot', 'workspace', `kubeconfig-${target}`)
+    ? process.argv[4] ?? join(process.env.HOME ?? '', '.xops', 'workspace', `kubeconfig-${target}`)
     : undefined;
 
 console.log(`[poc] profile=${profile} target=${target}${kubeconfig ? ` kubeconfig=${kubeconfig}` : ''}`);
@@ -22,12 +22,12 @@ const outcome = await runGooseSkill({
   target,
   profile,
   skill: profile === 'docker' ? 'docker-container-triage' : 'k8s-pod-restart-triage',
-  workdir: join(process.env.HOME ?? '', '.opspilot', 'workspace', 'goose-poc'),
+  workdir: join(process.env.HOME ?? '', '.xops', 'workspace', 'goose-poc'),
   skillsSource: join(import.meta.dir, '..', 'packages', 'skills', 'bundled'),
   kubeconfig,
   timeoutMs: 300_000,
   provider,
-  model: process.env.OPSPILOT_MODEL ?? (provider === 'ollama' ? 'qwen25-32k' : undefined),
+  model: process.env.XOPS_MODEL ?? (provider === 'ollama' ? 'qwen25-32k' : undefined),
 });
 
 console.log(`\n[poc] wall=${Math.round((Date.now() - started) / 1000)}s exit=${outcome.exitCode} timedOut=${outcome.timedOut}`);

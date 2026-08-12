@@ -1,5 +1,5 @@
 {
-  "name": "@opspilot/channels",
+  "name": "@xops/channels",
   "version": "0.1.0",
   "description": "Channel adapters for Telegram, Slack, and Web",
   "type": "module",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@opspilot/core": "workspace:*",
+    "@xops/core": "workspace:*",
     "grammy": "^1.31.0",
     "@slack/bolt": "^4.2.0"
   },

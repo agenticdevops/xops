@@ -8,8 +8,8 @@ set -euo pipefail
 
 NS="${1:?usage: provision-poc-rbac.sh <namespace> [context] [outfile]}"
 CTX="${2:-kind-troublesim}"
-OUT="${3:-$HOME/.opspilot/workspace/kubeconfig-${NS}}"
-SA="opspilot-agent"
+OUT="${3:-$HOME/.xops/workspace/kubeconfig-${NS}}"
+SA="xops-agent"
 
 kubectl --context "$CTX" -n "$NS" apply -f - <<EOF
 apiVersion: v1

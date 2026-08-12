@@ -1,15 +1,15 @@
 {
-  "name": "opspilot",
+  "name": "xops",
   "version": "0.1.0",
   "private": true,
   "description": "Your 24/7 DevOps Copilot that actually does the work",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agenticops/opspilot"
+    "url": "https://github.com/agenticops/xops"
   },
   "license": "Apache-2.0",
   "bin": {
-    "opspilot": "./apps/cli/bin/opspilot"
+    "xops": "./apps/cli/bin/xops"
   },
   "workspaces": [
     "packages/*",

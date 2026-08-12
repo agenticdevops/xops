@@ -1,19 +1,19 @@
-# OpsPilot Roadmap — POC-First
+# xops Roadmap
 
-*Mode: quick experiment. Prove the value fast, then decide: wrap up or build on.*
-*Workflow: superpowers (brainstorm → plan → TDD → verify). GSD machinery retired; PROJECT.md + codebase map kept as context.*
+*Rebranded 2026-08-12: OpsPilot → **xops**, the agentic [x]ops tool. Domain xops.bot. Positioning: a focused tool for an individual operator NOW; agentic [x]ops platform (desktop agent + central command center) as the long vision, built one working increment at a time (cycle → scooter → car → plane). Do not over-engineer toward the platform.*
+*Workflow: superpowers (brainstorm → plan → TDD → verify). Planning docs (PROJECT/ROADMAP/plans) kept from GSD; GSD machinery retired.*
 
 ## Goals
 
 **What we're building:** a self-hosted 24/7 DevOps AI agent. You message it on Telegram; it executes real Kubernetes operations on your infrastructure — safely (fail-closed guardrails, scoped RBAC) — and reports back only after verifying actual cluster state.
 
-**Why:** existing pieces don't compose into this product. Claude Code / goose are engines without a product shell (no channels, no always-on deployment, no memory, no setup story). opspilot has the product shell (wizard, channels, memory, docs) but its hand-rolled engine can't act. Marrying opspilot's shell to goose's engine — with the security model proven in aoh and the verification discipline proven in openagentix — gets a real "DevOps copilot that actually does the work."
+**Why:** existing pieces don't compose into this product. Claude Code / goose are engines without a product shell (no channels, no always-on deployment, no memory, no setup story). xops has the product shell (wizard, channels, memory, docs) but its hand-rolled engine can't act. Marrying xops's shell to goose's engine — with the security model proven in aoh and the verification discipline proven in openagentix — gets a real "DevOps copilot that actually does the work."
 
 **The bet being tested:** goose-as-subprocess (driven by generated recipe YAMLs from ported openagentix skills) can power a Telegram→k8s-action→verified-reply loop reliably enough to be worth building a product on.
 
 ## POC — prove the spine, ONE slice (target: days, not weeks)
 
-**Demo that must work:** send OpsPilot a Telegram message about a broken workload in a local kind cluster (e.g. crashlooping deployment). It runs a goose recipe with the k8s skill under a scoped kubeconfig, the guard blocks non-allowlisted mutations, it fixes/diagnoses the issue, verifies actual cluster state, and replies with the verified result.
+**Demo that must work:** send xops a Telegram message about a broken workload in a local kind cluster (e.g. crashlooping deployment). It runs a goose recipe with the k8s skill under a scoped kubeconfig, the guard blocks non-allowlisted mutations, it fixes/diagnoses the issue, verifies actual cluster state, and replies with the verified result.
 
 *2026-07-31: collapsed 3 slices into one full-spine POC (fail-fast preference). Multica (`../experiments/multica`) reviewed for pivot: validates driving CLI agents as subprocess workers at production scale; Claude-Code-headless pivot considered and rejected — goose bet stands. Multica's skill-sync/daemon patterns noted for post-POC.*
 
@@ -29,16 +29,16 @@
 
 ## Build phases (post-gate; updated 2026-08-12 after xopsbot consolidation decision)
 
-*Decision: OpsPilot continues as the one project, released as **opspilot.sh**, goose engine. xopsbot (`../experiments/xopsbot`, OpenClaw-based, v1 complete but stale) is discontinued as a product and mined for parts. xops.bot domain parked/redirect.*
+*Decision: xops continues as the one project, released as **xops.sh**, goose engine. xopsbot (`../experiments/xopsbot`, OpenClaw-based, v1 complete but stale) is discontinued as a product and mined for parts. xops.bot domain parked/redirect.*
 
 1. **Product layer: agent routing + personas** — intent detection (chat vs incident vs command), general chat via goose session, namespace/skill selection. **Port from xopsbot:** 5 persona templates (`xopsbot/workspaces/*/{IDENTITY,SOUL,TOOLS}.md`) adapted to goose recipes; safety-mode concept (Safe/Standard/Full) as approval tiers layered ON TOP of fail-closed guard (hard boundary stays ours)
 2. **Guard v2** — **port xopsbot risk taxonomy** (`safety/risk-classifications.json`, 186 commands LOW→CRITICAL) as guard decision data across kubectl/docker/helm/terraform; fix flags-before-verb parsing; docker guard profile (non-k8s slice)
 3. **Cleanup + hardening** — delete `AIRuntime` backends, config schema matches accounts layout, fix known concerns (cross-package imports, duplicate types, cli/memory mismatch), port remaining openagentix skills; convert xopsbot's 10 prose skills to executable-runbook format incrementally
-4. **Ops lifecycle** — auto-reprovision RBAC tokens, kubeconfig drift detection, supervised `opspilot start` service, reconnect/restart resilience
+4. **Ops lifecycle** — auto-reprovision RBAC tokens, kubeconfig drift detection, supervised `xops start` service, reconnect/restart resilience
 5. **Wizard v2** — **port xopsbot wizard flows** (6-step, presets, profiles) retargeted at goose install/detection, kubeconfig provisioning, Telegram setup
 6. **Memory injection** — retrieved memory context into recipes
-7. **Automation** — `@opspilot/automation`: heartbeat, morning briefing, cron on same goose+verify pipeline
-8. **Channels + docs + launch** — Slack/Web wiring; **port/adapt xopsbot's 29-page docs** to opspilot.sh Docusaurus; launch site
+7. **Automation** — `@xops/automation`: heartbeat, morning briefing, cron on same goose+verify pipeline
+8. **Channels + docs + launch** — Slack/Web wiring; **port/adapt xopsbot's 29-page docs** to xops.sh Docusaurus; launch site
 
 ## POC learnings (keep)
 

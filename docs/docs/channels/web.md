@@ -4,7 +4,9 @@ sidebar_position: 3
 
 # Web Chat
 
-Use OpsPilot through a web browser interface.
+> **Status: no UI yet.** The gateway exposes HTTP/WebSocket chat endpoints, but there is no web interface. A config + chat web UI is on the roadmap. The description below is the target design.
+
+Use xops through a web browser interface.
 
 ## Overview
 
@@ -20,7 +22,7 @@ The web channel provides:
 Web chat is enabled by default. Start the gateway:
 
 ```bash
-opspilot gateway start
+xops gateway start
 ```
 
 Open your browser to:
@@ -234,7 +236,7 @@ gateway:
 ```
 
 :::warning Security
-When binding to `0.0.0.0`, anyone on your network can access OpsPilot. Consider:
+When binding to `0.0.0.0`, anyone on your network can access xops. Consider:
 - Using a firewall
 - Setting up authentication (coming soon)
 - Using a VPN or tunnel
@@ -261,7 +263,7 @@ See [Self-Hosting](../advanced/self-hosting) for tunnel setup.
 ```python
 import requests
 
-class OpsPilotClient:
+class xopsClient:
     def __init__(self, base_url="http://localhost:18789"):
         self.base_url = base_url
         self.conversation_id = None
@@ -279,7 +281,7 @@ class OpsPilotClient:
         return data["response"]
 
 # Usage
-client = OpsPilotClient()
+client = xopsClient()
 print(client.chat("Hello!"))
 print(client.chat("What pods are running?"))
 ```
@@ -289,14 +291,14 @@ print(client.chat("What pods are running?"))
 ```bash
 #!/bin/bash
 
-opspilot_chat() {
+xops_chat() {
     curl -s -X POST http://localhost:18789/chat \
         -H "Content-Type: application/json" \
         -d "{\"message\": \"$1\"}" | jq -r '.response'
 }
 
 # Usage
-opspilot_chat "Check cluster health"
+xops_chat "Check cluster health"
 ```
 
 ### Node.js Client
@@ -336,7 +338,7 @@ chat('List deployments').then(console.log);
 
 Gateway is not running:
 ```bash
-opspilot gateway start
+xops gateway start
 ```
 
 ### "CORS error" in browser

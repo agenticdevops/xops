@@ -3,8 +3,8 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'OpsPilot',
-  tagline: 'Your 24/7 DevOps Copilot that actually does the work',
+  title: 'xops',
+  tagline: 'The agentic [x]ops tool — DevOps, SRE, and beyond, driven from chat',
   favicon: 'img/favicon.ico',
 
   future: {
@@ -12,10 +12,10 @@ const config: Config = {
   },
 
   url: 'https://agenticdevops.github.io',
-  baseUrl: '/opspilot/',
+  baseUrl: '/xops/',
 
   organizationName: 'agenticdevops',
-  projectName: 'opspilot',
+  projectName: 'xops',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -31,7 +31,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/agenticops/opspilot/tree/main/docs/',
+          editUrl: 'https://github.com/agenticops/xops/tree/main/docs/',
           routeBasePath: '/',
         },
         blog: false,
@@ -43,15 +43,15 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/opspilot-social.png',
+    image: 'img/xops-social.png',
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'OpsPilot',
+      title: 'xops',
       logo: {
-        alt: 'OpsPilot Logo',
+        alt: 'xops Logo',
         src: 'img/logo.svg',
       },
       items: [
@@ -67,7 +67,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/agenticops/opspilot',
+          href: 'https://github.com/agenticops/xops',
           label: 'GitHub',
           position: 'right',
         },
@@ -115,20 +115,20 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/agenticops/opspilot',
+              href: 'https://github.com/agenticops/xops',
             },
             {
               label: 'Discord',
-              href: 'https://discord.gg/opspilot',
+              href: 'https://discord.gg/xops',
             },
             {
               label: 'Twitter',
-              href: 'https://twitter.com/opspilot',
+              href: 'https://twitter.com/xops',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} OpsPilot. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} xops. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

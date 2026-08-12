@@ -4,11 +4,11 @@ sidebar_position: 4
 
 # Configuration
 
-OpsPilot has two configuration surfaces: its own `~/.opspilot/config.yaml` (channels, memory), and goose's provider config (which LLM powers the engine).
+xops has two configuration surfaces: its own `~/.xops/config.yaml` (channels, memory), and goose's provider config (which LLM powers the engine).
 
-## OpsPilot config
+## xops config
 
-`file: ~/.opspilot/config.yaml`
+`file: ~/.xops/config.yaml`
 
 ```
 channels:
@@ -21,7 +21,7 @@ channels:
           - your_telegram_username
 
 memory:
-  path: ~/.opspilot/memory.db
+  path: ~/.xops/memory.db
 ```
 
 - **`allowFrom`** — usernames permitted to talk to your bot. Empty list = anyone. Always set this.
@@ -29,24 +29,24 @@ memory:
 
 ## Engine (goose) configuration
 
-OpsPilot spawns `goose run` for every action and chat turn. Which model answers is decided by goose:
+xops spawns `goose run` for every action and chat turn. Which model answers is decided by goose:
 
 ```
 goose configure
 ```
 
-Provider selection per OpsPilot run can override goose's default via environment variables:
+Provider selection per xops run can override goose's default via environment variables:
 
 ```
-OPSPILOT_PROVIDER=ollama OPSPILOT_MODEL=qwen25-32k bun scripts/poc-run.ts docker opspilot-victim
+XOPS_PROVIDER=ollama XOPS_MODEL=qwen25-32k bun scripts/poc-run.ts docker xops-victim
 ```
 
 | Variable | Meaning | Default |
 |---|---|---|
-| `OPSPILOT_PROVIDER` | goose provider for engine runs (`ollama`, `anthropic`, ...) | goose's configured default |
-| `OPSPILOT_MODEL` | model name passed to goose | goose's configured default |
+| `XOPS_PROVIDER` | goose provider for engine runs (`ollama`, `anthropic`, ...) | goose's configured default |
+| `XOPS_MODEL` | model name passed to goose | goose's configured default |
 
-`recommendation: use a native goose provider (ollama, anthropic). The claude-acp bridge provider has known issues driving OpsPilot runs — hangs on parallel tool calls and no skill passthrough.`
+`recommendation: use a native goose provider (ollama, anthropic). The claude-acp bridge provider has known issues driving xops runs — hangs on parallel tool calls and no skill passthrough.`
 
 ## Scoped credentials (Kubernetes)
 
@@ -64,7 +64,7 @@ Each skill declares the commands it may use in its frontmatter:
 
 ```
 metadata:
-  opspilot:
+  xops:
     grants: [ps, inspect, logs, stats, events, restart, update]
 ```
 

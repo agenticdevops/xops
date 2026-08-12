@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * OpsPilot CLI - Your 24/7 DevOps Copilot
+ * xops CLI - Your 24/7 DevOps Copilot
  */
 
 import { Command } from 'commander';
@@ -13,7 +13,7 @@ const VERSION = '0.1.0';
 const program = new Command();
 
 program
-  .name('opspilot')
+  .name('xops')
   .description('Your 24/7 DevOps Copilot that actually does the work')
   .version(VERSION);
 
@@ -35,12 +35,12 @@ program
 // Status command
 program
   .command('status')
-  .description('Show OpsPilot status')
+  .description('Show xops status')
   .action(async () => {
-    console.log(pc.cyan('\n📊 OpsPilot Status\n'));
+    console.log(pc.cyan('\n📊 xops Status\n'));
 
     if (!configExists()) {
-      console.log(pc.red('Not configured.'), 'Run', pc.cyan('opspilot setup'), 'first.\n');
+      console.log(pc.red('Not configured.'), 'Run', pc.cyan('xops setup'), 'first.\n');
       return;
     }
 
@@ -68,7 +68,7 @@ program
       console.log(pc.cyan('\n🌐 Starting Gateway\n'));
 
       if (!configExists()) {
-        console.log(pc.red('Not configured.'), 'Run', pc.cyan('opspilot setup'), 'first.\n');
+        console.log(pc.red('Not configured.'), 'Run', pc.cyan('xops setup'), 'first.\n');
         return;
       }
 
@@ -181,7 +181,7 @@ program
       console.log(pc.dim('Stop via Ctrl+C in the running terminal, or use systemctl if running as service.'));
     } else if (action === 'status') {
       if (!configExists()) {
-        console.log(pc.red('Not configured.'), 'Run', pc.cyan('opspilot setup'), 'first.\n');
+        console.log(pc.red('Not configured.'), 'Run', pc.cyan('xops setup'), 'first.\n');
         return;
       }
       try {
@@ -264,11 +264,11 @@ program
 // Chat command (quick message)
 program
   .command('chat')
-  .description('Send a quick message to OpsPilot')
+  .description('Send a quick message to xops')
   .argument('<message>', 'Message to send')
   .action(async (message) => {
     if (!configExists()) {
-      console.log(pc.red('Not configured.'), 'Run', pc.cyan('opspilot setup'), 'first.\n');
+      console.log(pc.red('Not configured.'), 'Run', pc.cyan('xops setup'), 'first.\n');
       return;
     }
 
@@ -280,11 +280,11 @@ program
       try {
         await fetch(`${gatewayUrl}/health`);
       } catch {
-        console.log(pc.red('Gateway not running.'), 'Run', pc.cyan('opspilot gateway start'), 'first.\n');
+        console.log(pc.red('Gateway not running.'), 'Run', pc.cyan('xops gateway start'), 'first.\n');
         return;
       }
 
-      console.log(pc.cyan('\n💬 OpsPilot\n'));
+      console.log(pc.cyan('\n💬 xops\n'));
       process.stdout.write(pc.dim('Thinking... '));
 
       // Send message to gateway
