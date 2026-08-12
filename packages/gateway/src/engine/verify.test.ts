@@ -34,3 +34,29 @@ describe('assessPods', () => {
     expect(assessPods([pod('job-x', { phase: 'Succeeded', ready: false })]).healthy).toBe(true);
   });
 });
+
+describe('assessContainer', () => {
+  const { assessContainer } = require('./verify');
+  const c = (status: string, health?: string, restarts = 0) => ({
+    State: { Status: status, Health: health ? { Status: health } : undefined },
+    RestartCount: restarts,
+    Name: '/web',
+  });
+
+  test('running with healthy healthcheck is healthy', () => {
+    expect(assessContainer(c('running', 'healthy')).healthy).toBe(true);
+  });
+
+  test('running with no healthcheck is healthy', () => {
+    expect(assessContainer(c('running')).healthy).toBe(true);
+  });
+
+  test('running but unhealthy healthcheck fails', () => {
+    expect(assessContainer(c('running', 'unhealthy')).healthy).toBe(false);
+  });
+
+  test('exited and restarting fail', () => {
+    expect(assessContainer(c('exited')).healthy).toBe(false);
+    expect(assessContainer(c('restarting')).healthy).toBe(false);
+  });
+});

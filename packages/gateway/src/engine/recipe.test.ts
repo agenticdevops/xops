@@ -36,4 +36,21 @@ describe('renderRecipe', () => {
     expect(yaml).toContain('k8s-imagepull-triage');
     expect(yaml).not.toContain('k8s-pod-restart-triage');
   });
+
+  test('docker profile: target parameter, docker rules, no kubectl text', () => {
+    const yaml = renderRecipe({ skill: 'docker-container-triage', profile: 'docker' });
+    expect(yaml).toContain('key: target');
+    expect(yaml).toContain('{{ target }}');
+    expect(yaml).not.toContain('{{ namespace }}');
+    expect(yaml).not.toContain('kubectl');
+    expect(yaml).toContain('Never remove containers');
+    expect(yaml).toContain('docker-container-triage');
+    expect(yaml).toContain('non-interactive');
+  });
+
+  test('default profile stays k8s (backward compatible)', () => {
+    const yaml = renderRecipe({ skill: 'k8s-pod-restart-triage' });
+    expect(yaml).toContain('key: namespace');
+    expect(yaml).toContain('kubectl');
+  });
 });

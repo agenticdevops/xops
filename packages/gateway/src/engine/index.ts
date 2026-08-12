@@ -5,16 +5,20 @@
  */
 import { join } from 'path';
 import { runGooseSkill, type EngineRunOptions } from './goose';
-import { verifyNamespace } from './verify';
+import { verifyContainer, verifyNamespace } from './verify';
+import type { EngineProfile } from './recipe';
 
-export { evaluateKubectl } from './guard';
+export { evaluateCommand, evaluateKubectl } from './guard';
+export { classify } from './risk';
 export { parseGooseOutput } from './parse';
-export { renderRecipe } from './recipe';
+export { renderRecipe, type EngineProfile } from './recipe';
 export { runGooseSkill } from './goose';
-export { assessPods, verifyNamespace } from './verify';
+export { assessContainer, assessPods, verifyContainer, verifyNamespace } from './verify';
 
 export interface IncidentRequest {
-  namespace: string;
+  /** namespace (k8s) or container name/pattern (docker) */
+  target: string;
+  profile?: EngineProfile;
   skill?: string;
   workdir: string;
   skillsSource: string;
@@ -28,20 +32,30 @@ export interface IncidentReply {
   wallSeconds: number;
 }
 
+const DEFAULT_SKILL: Record<EngineProfile, string> = {
+  k8s: 'k8s-pod-restart-triage',
+  docker: 'docker-container-triage',
+};
+
 export async function handleIncident(req: IncidentRequest): Promise<IncidentReply> {
   const started = Date.now();
-  const skill = req.skill ?? 'k8s-pod-restart-triage';
+  const profile = req.profile ?? 'k8s';
+  const skill = req.skill ?? DEFAULT_SKILL[profile];
 
   const outcome = await runGooseSkill({
-    namespace: req.namespace,
+    target: req.target,
+    profile,
     skill,
-    workdir: join(req.workdir, `run-${req.namespace}`),
+    workdir: join(req.workdir, `run-${req.target.replace(/[^a-z0-9-]/gi, '_')}`),
     skillsSource: req.skillsSource,
     kubeconfig: req.kubeconfig,
     timeoutMs: req.timeoutMs ?? 300_000,
   } satisfies EngineRunOptions);
 
-  const verdict = await verifyNamespace(req.namespace, req.kubeconfig);
+  const verdict =
+    profile === 'docker'
+      ? await verifyContainer(req.target)
+      : await verifyNamespace(req.target, req.kubeconfig);
   const wallSeconds = Math.round((Date.now() - started) / 1000);
 
   const denied = outcome.guardLog.filter((g) => g.allowed === false).length;

@@ -42,6 +42,36 @@ export function assessPods(pods: PodLike[]): Verdict {
     : { healthy: false, summary: `unhealthy: ${unhealthy.join(', ')} (${ok}/${pods.length} ok)` };
 }
 
+interface ContainerInspect {
+  Name?: string;
+  State?: { Status?: string; Health?: { Status?: string } };
+  RestartCount?: number;
+}
+
+export function assessContainer(c: ContainerInspect): Verdict {
+  const name = (c.Name ?? '(unnamed)').replace(/^\//, '');
+  const status = c.State?.Status ?? 'unknown';
+  const health = c.State?.Health?.Status;
+
+  if (status !== 'running') return { healthy: false, summary: `${name} is ${status}` };
+  if (health && health !== 'healthy') return { healthy: false, summary: `${name} running but ${health}` };
+  return { healthy: true, summary: `${name} running${health ? ' and healthy' : ''}` };
+}
+
+export async function verifyContainer(pattern: string): Promise<Verdict> {
+  try {
+    const { stdout: id } = await execFileAsync('docker', ['ps', '-a', '--filter', `name=${pattern}`, '--format', '{{.ID}}'], {
+      timeout: 15_000,
+    });
+    const cid = id.trim().split('\n')[0];
+    if (!cid) return { healthy: false, summary: `no container matching "${pattern}"` };
+    const { stdout } = await execFileAsync('docker', ['inspect', cid], { timeout: 15_000 });
+    return assessContainer(JSON.parse(stdout)[0] as ContainerInspect);
+  } catch (err) {
+    return { healthy: false, summary: `verification failed to run: ${(err as Error).message}` };
+  }
+}
+
 export async function verifyNamespace(namespace: string, kubeconfig?: string): Promise<Verdict> {
   try {
     const env = kubeconfig ? { ...process.env, KUBECONFIG: kubeconfig } : process.env;

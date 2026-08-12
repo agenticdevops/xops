@@ -24,32 +24,48 @@ const HOME = process.env.HOME ?? '';
 const WORKSPACE = join(HOME, '.opspilot', 'workspace');
 const SKILLS = join(import.meta.dir, '..', 'packages', 'skills', 'bundled');
 
-function extractNamespace(text: string): string {
+interface RoutedIntent {
+  profile: 'k8s' | 'docker';
+  target: string;
+}
+
+/** Naive keyword routing for POC; full intent routing lands in phase 1. */
+function routeIntent(text: string): RoutedIntent {
+  const isDocker = /\b(docker|container)\b/i.test(text);
+  if (isDocker) {
+    const m = text.match(/\bcontainer\s+([a-z0-9][a-z0-9_.-]*)/i) ?? text.match(/\bdocker\s+([a-z0-9][a-z0-9_.-]*)/i);
+    return { profile: 'docker', target: m?.[1] ?? 'opspilot-victim' };
+  }
   const nsMatch = text.match(/\bns[:= ]\s*([a-z0-9-]+)/i) ?? text.match(/\b(troublesim-[a-z0-9-]+)\b/i);
-  return nsMatch?.[1] ?? 'troublesim-s4';
+  return { profile: 'k8s', target: nsMatch?.[1] ?? 'troublesim-s4' };
 }
 
 const adapter = new TelegramAdapter(tg);
 
 adapter.onMessage(async (incoming) => {
-  const namespace = extractNamespace(incoming.content);
+  const { profile, target } = routeIntent(incoming.content);
   const chatId = String(incoming.metadata?.chatId ?? incoming.userId);
 
-  const kubeconfig = join(WORKSPACE, `kubeconfig-${namespace}`);
-  if (!existsSync(kubeconfig)) {
-    return `No scoped kubeconfig for namespace "${namespace}". Run: scripts/provision-poc-rbac.sh ${namespace}`;
+  let kubeconfig: string | undefined;
+  if (profile === 'k8s') {
+    kubeconfig = join(WORKSPACE, `kubeconfig-${target}`);
+    if (!existsSync(kubeconfig)) {
+      return `No scoped kubeconfig for namespace "${target}". Run: scripts/provision-poc-rbac.sh ${target}`;
+    }
   }
 
-  await adapter.send({ chatId, content: `🔧 On it — investigating \`${namespace}\` (goose + ${'k8s-pod-restart-triage'})...` });
+  const skill = profile === 'docker' ? 'docker-container-triage' : 'k8s-pod-restart-triage';
+  await adapter.send({ chatId, content: `🔧 On it — investigating \`${target}\` (goose + ${skill})...` });
 
-  console.log(`[poc-tg] ${incoming.username ?? incoming.userId} -> ns=${namespace}`);
+  console.log(`[poc-tg] ${incoming.username ?? incoming.userId} -> ${profile}:${target}`);
   const outcome = await handleIncident({
-    namespace,
+    target,
+    profile,
     workdir: join(WORKSPACE, 'goose-runs'),
     skillsSource: SKILLS,
     kubeconfig,
   });
-  console.log(`[poc-tg] done ns=${namespace} verified=${outcome.verified} wall=${outcome.wallSeconds}s`);
+  console.log(`[poc-tg] done ${profile}:${target} verified=${outcome.verified} wall=${outcome.wallSeconds}s`);
   return outcome.reply;
 });
 
