@@ -69,7 +69,8 @@ extensions:
 prompt: |
   This is a non-interactive automated run. There is no human available.
   Do not ask questions - if information is missing, obtain it yourself with
-  the shell tool. ${profile.subject}.
+  the shell tool. Issue ONE tool call at a time; never run tools in parallel.
+  ${profile.subject}.
   1. Read the runbook with shell: cat .goose/skills/${opts.skill}/SKILL.md
      (do not use skill-loading tools; the file is in the working directory).
   2. Run its diagnose script against ${p} and read the JSON. The script is at

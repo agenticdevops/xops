@@ -7,6 +7,7 @@ import { runGooseSkill } from '../packages/gateway/src/engine/goose';
 import type { EngineProfile } from '../packages/gateway/src/engine/recipe';
 import { join } from 'path';
 
+const provider = process.env.OPSPILOT_PROVIDER ?? 'ollama';
 const profile = (process.argv[2] ?? 'k8s') as EngineProfile;
 const target = process.argv[3] ?? (profile === 'docker' ? 'opspilot-victim' : 'troublesim-s4');
 const kubeconfig =
@@ -25,8 +26,8 @@ const outcome = await runGooseSkill({
   skillsSource: join(import.meta.dir, '..', 'packages', 'skills', 'bundled'),
   kubeconfig,
   timeoutMs: 300_000,
-  provider: process.env.OPSPILOT_PROVIDER ?? 'ollama',
-  model: process.env.OPSPILOT_MODEL ?? 'qwen25-32k',
+  provider,
+  model: process.env.OPSPILOT_MODEL ?? (provider === 'ollama' ? 'qwen25-32k' : undefined),
 });
 
 console.log(`\n[poc] wall=${Math.round((Date.now() - started) / 1000)}s exit=${outcome.exitCode} timedOut=${outcome.timedOut}`);
