@@ -24,6 +24,11 @@ export interface EngineRunOptions {
   gooseBin?: string;
   timeoutMs?: number;
   maxTurns?: number;
+  /** goose provider override (e.g. 'ollama', 'anthropic'). Avoids machine-default
+   *  claude-acp, whose ACP bridge has proven flaky (hangs on parallel tool calls,
+   *  no skill registry passthrough). */
+  provider?: string;
+  model?: string;
 }
 
 export interface EngineRunOutcome {
@@ -59,6 +64,7 @@ export function prepWorkdir(opts: EngineRunOptions): {
   binDir: string;
   grants: string[];
   tool: string;
+  realTool: string;
 } {
   const profile = opts.profile ?? 'k8s';
   const tool = PROFILE_TOOL[profile];
@@ -78,15 +84,22 @@ export function prepWorkdir(opts: EngineRunOptions): {
   const guardLogPath = join(wd, 'guard.jsonl');
   writeFileSync(guardLogPath, '');
 
+  // Policy is baked into the shim as literals — never read from env the
+  // agent's shell controls (security review: env-var override bypass).
+  // The real binary path is resolved now and baked too; findRealTool throws
+  // rather than fall back to a name that would re-resolve to this shim.
+  const realTool = findRealTool(tool, join(wd, 'bin'));
   const guardCli = join(import.meta.dir, 'guard-cli.ts');
   const shimPath = join(wd, 'bin', tool);
+  const nsLiteral = opts.profile === 'docker' ? '' : opts.target;
+  const targetLiteral = opts.profile === 'docker' ? opts.target : '';
   writeFileSync(
     shimPath,
     `#!/usr/bin/env bash
-# OpsPilot fail-closed ${tool} guard shim (generated per run)
-decision=$(bun "${guardCli}" "$@")
+# OpsPilot fail-closed ${tool} guard shim (generated per run; policy baked in)
+decision=$(bun "${guardCli}" --tool ${shellQuote(tool)} --grants ${shellQuote(grants.join(','))} --ns ${shellQuote(nsLiteral)} --target ${shellQuote(targetLiteral)} --log ${shellQuote(guardLogPath)} -- "$@")
 if [ "$decision" = "ALLOW" ]; then
-  exec "\${OPSPILOT_REAL_TOOL:?}" "$@"
+  exec ${shellQuote(realTool)} "$@"
 else
   echo "${tool}-guard: \${decision}" >&2
   exit 1
@@ -95,13 +108,17 @@ fi
   );
   chmodSync(shimPath, 0o755);
 
-  return { recipePath, guardLogPath, binDir: join(wd, 'bin'), grants, tool };
+  return { recipePath, guardLogPath, binDir: join(wd, 'bin'), grants, tool, realTool };
+}
+
+function shellQuote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
 export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOutcome> {
   const profile = opts.profile ?? 'k8s';
   const wd = resolve(opts.workdir);
-  const { recipePath, guardLogPath, binDir, grants, tool } = prepWorkdir(opts);
+  const { recipePath, guardLogPath, binDir } = prepWorkdir(opts);
   const rawPath = join(wd, 'run.stream.jsonl');
   const gooseBin = opts.gooseBin ?? 'goose';
   const timeoutMs = opts.timeoutMs ?? 300_000;
@@ -110,15 +127,8 @@ export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOu
     ...process.env,
     PATH: `${binDir}:${process.env.PATH ?? ''}`,
     GOOSE_MODE: 'auto',
-    OPSPILOT_GUARD_TOOL: tool,
-    OPSPILOT_GUARD_GRANTS: grants.join(','),
-    OPSPILOT_GUARD_LOG: guardLogPath,
-    OPSPILOT_REAL_TOOL: findRealTool(tool, binDir),
   };
-  if (profile === 'k8s') {
-    env.OPSPILOT_GUARD_NS = opts.target;
-    if (opts.kubeconfig) env.KUBECONFIG = opts.kubeconfig;
-  }
+  if (profile === 'k8s' && opts.kubeconfig) env.KUBECONFIG = opts.kubeconfig;
 
   const paramKey = profile === 'docker' ? 'target' : 'namespace';
   const args = [
@@ -134,6 +144,8 @@ export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOu
     '--max-turns',
     String(opts.maxTurns ?? 20),
   ];
+  if (opts.provider) args.push('--provider', opts.provider);
+  if (opts.model) args.push('--model', opts.model);
 
   const chunks: Buffer[] = [];
   const errChunks: Buffer[] = [];
@@ -203,5 +215,7 @@ function findRealTool(tool: string, shimBinDir: string): string {
       continue;
     }
   }
-  return tool;
+  // Never return a bare name: the shim would exec it, PATH would resolve it
+  // back to the shim, and the run becomes a fork bomb (security review).
+  throw new Error(`real ${tool} binary not found on PATH — refusing to generate shim`);
 }

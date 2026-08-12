@@ -120,9 +120,10 @@ curl http://localhost:18789/status
     "memoryChunks": 156
   },
   "config": {
-    "ai": {
-      "provider": "anthropic",
-      "model": "claude-sonnet-4-20250514"
+    "engine": {
+      "runner": "goose",
+      "provider": "ollama",
+      "model": "qwen25-32k"
     },
     "channels": {
       "telegram": true,

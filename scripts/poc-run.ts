@@ -25,6 +25,8 @@ const outcome = await runGooseSkill({
   skillsSource: join(import.meta.dir, '..', 'packages', 'skills', 'bundled'),
   kubeconfig,
   timeoutMs: 300_000,
+  provider: process.env.OPSPILOT_PROVIDER ?? 'ollama',
+  model: process.env.OPSPILOT_MODEL ?? 'qwen25-32k',
 });
 
 console.log(`\n[poc] wall=${Math.round((Date.now() - started) / 1000)}s exit=${outcome.exitCode} timedOut=${outcome.timedOut}`);

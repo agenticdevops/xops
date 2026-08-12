@@ -35,20 +35,21 @@ export function parseGooseOutput(raw: string): GooseResult {
   // goose 1.45 stream-json emits incremental deltas sharing a message id;
   // accumulate text per id (fallback: line index = own group), last group
   // containing text wins.
-  const order: string[] = [];
+  // last-SEEN group wins (not first-seen order): if goose interleaves or
+  // re-emits an id, the group that produced the final delta is the answer
   const textById = new Map<string, string>();
+  let lastId: string | undefined;
   messages.forEach((msg, i) => {
     if (msg.role !== 'assistant') return;
     const id = msg.id ?? `__idx_${i}`;
     for (const block of msg.content ?? []) {
       if (block.type === 'text' && block.text) {
-        if (!textById.has(id)) order.push(id);
         textById.set(id, (textById.get(id) ?? '') + block.text);
+        lastId = id;
       }
     }
   });
 
-  const lastId = order[order.length - 1];
   const finalText = lastId !== undefined ? textById.get(lastId) ?? null : null;
 
   return { finalText, messageCount: messages.length };

@@ -1,29 +1,39 @@
 /**
  * CLI entry for guarded-tool PATH shims. Prints "ALLOW" or "DENY <reason>".
- * Appends every decision as JSONL to OPSPILOT_GUARD_LOG when set.
- * Env contract (set by goose.ts per run):
- *   OPSPILOT_GUARD_TOOL   kubectl | docker
- *   OPSPILOT_GUARD_GRANTS comma-separated skill grants
- *   OPSPILOT_GUARD_NS     pinned namespace (k8s profile only)
+ * Policy arrives as argv baked into the generated shim by goose.ts — NEVER
+ * from environment variables, which the guarded agent's shell controls
+ * (security review: env-override bypass).
+ *
+ * Invocation: guard-cli.ts --tool T --grants a,b --ns N --target C --log PATH -- <cmd args...>
  */
 import { appendFileSync } from 'fs';
 import { evaluateCommand } from './guard';
 
-const tool = process.env.OPSPILOT_GUARD_TOOL ?? '';
-const grants = (process.env.OPSPILOT_GUARD_GRANTS ?? '').split(',').filter(Boolean);
-const ns = process.env.OPSPILOT_GUARD_NS;
-const args = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const sep = argv.indexOf('--');
+const policyArgs = sep === -1 ? argv : argv.slice(0, sep);
+const cmdArgs = sep === -1 ? [] : argv.slice(sep + 1);
+
+function policyValue(flag: string): string {
+  const i = policyArgs.indexOf(flag);
+  return i !== -1 ? policyArgs[i + 1] ?? '' : '';
+}
+
+const tool = policyValue('--tool');
+const grants = policyValue('--grants').split(',').filter(Boolean);
+const ns = policyValue('--ns') || undefined;
+const target = policyValue('--target') || undefined;
+const logPath = policyValue('--log');
 
 const decision = tool
-  ? evaluateCommand({ tool, args, skillGrants: grants, namespace: ns })
-  : { allowed: false, reason: 'OPSPILOT_GUARD_TOOL not set (fail-closed)' };
+  ? evaluateCommand({ tool, args: cmdArgs, skillGrants: grants, namespace: ns, target })
+  : { allowed: false, reason: 'guard policy missing --tool (fail-closed)' };
 
-const logPath = process.env.OPSPILOT_GUARD_LOG;
 if (logPath) {
   try {
     appendFileSync(
       logPath,
-      JSON.stringify({ ts: new Date().toISOString(), tool, args, ...decision }) + '\n',
+      JSON.stringify({ ts: new Date().toISOString(), tool, args: cmdArgs, ...decision }) + '\n',
     );
   } catch {
     // logging must never turn a deny into a crash-open

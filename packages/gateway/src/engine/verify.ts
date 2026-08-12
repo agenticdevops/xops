@@ -63,10 +63,15 @@ export async function verifyContainer(pattern: string): Promise<Verdict> {
     const { stdout: id } = await execFileAsync('docker', ['ps', '-a', '--filter', `name=${pattern}`, '--format', '{{.ID}}'], {
       timeout: 15_000,
     });
-    const cid = id.trim().split('\n')[0];
-    if (!cid) return { healthy: false, summary: `no container matching "${pattern}"` };
-    const { stdout } = await execFileAsync('docker', ['inspect', cid], { timeout: 15_000 });
-    return assessContainer(JSON.parse(stdout)[0] as ContainerInspect);
+    const cids = id.trim().split('\n').filter(Boolean);
+    if (cids.length === 0) return { healthy: false, summary: `no container matching "${pattern}"` };
+    // name= is a substring filter — ALL matches must be healthy, not just the
+    // first (security review: sibling crash-loop hidden by arbitrary pick)
+    const { stdout } = await execFileAsync('docker', ['inspect', ...cids], { timeout: 15_000 });
+    const verdicts = (JSON.parse(stdout) as ContainerInspect[]).map(assessContainer);
+    const bad = verdicts.filter((v) => !v.healthy);
+    if (bad.length > 0) return { healthy: false, summary: bad.map((v) => v.summary).join('; ') };
+    return { healthy: true, summary: verdicts.map((v) => v.summary).join('; ') };
   } catch (err) {
     return { healthy: false, summary: `verification failed to run: ${(err as Error).message}` };
   }

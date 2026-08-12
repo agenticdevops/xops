@@ -91,7 +91,27 @@
         "prune": "CRITICAL",
         "system prune": "CRITICAL",
         "volume rm": "CRITICAL",
-        "network rm": "CRITICAL"
+        "network rm": "CRITICAL",
+        "container rm": "CRITICAL",
+        "container prune": "CRITICAL",
+        "container stop": "HIGH",
+        "container start": "HIGH",
+        "container restart": "HIGH",
+        "container kill": "HIGH",
+        "container update": "HIGH",
+        "container inspect": "LOW",
+        "container logs": "LOW",
+        "container ls": "LOW",
+        "container stats": "LOW",
+        "image rm": "CRITICAL",
+        "image prune": "CRITICAL",
+        "image ls": "LOW",
+        "volume prune": "CRITICAL",
+        "volume ls": "LOW",
+        "network prune": "CRITICAL",
+        "network ls": "LOW",
+        "compose down": "CRITICAL",
+        "compose up": "HIGH"
       }
     },
     "aws": {

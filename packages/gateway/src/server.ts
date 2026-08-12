@@ -7,7 +7,9 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serve } from 'bun';
 import type { OpsPilotConfig } from '../../core/src/types';
-import { AIRuntime } from './runtime';
+import { runGooseChat } from './engine/chat';
+import { join } from 'path';
+import { homedir } from 'os';
 import type { ChatMessage, ConversationContext, GatewayStats } from './types';
 
 export interface GatewayOptions {
@@ -25,7 +27,6 @@ export interface ProcessMessageOptions {
 export class GatewayServer {
   private app: Hono;
   private server: ReturnType<typeof serve> | null = null;
-  private runtime: AIRuntime;
   private config: OpsPilotConfig;
   private conversations: Map<string, ConversationContext> = new Map();
   private stats: GatewayStats;
@@ -43,11 +44,6 @@ export class GatewayServer {
       activeConversations: 0,
       memoryChunks: 0,
     };
-
-    // Initialize AI runtime
-    this.runtime = new AIRuntime({
-      aiConfig: this.config.ai,
-    });
 
     // Create Hono app
     this.app = new Hono();
@@ -83,9 +79,10 @@ export class GatewayServer {
         status: 'running',
         stats: this.stats,
         config: {
-          ai: {
-            provider: this.config.ai.provider,
-            model: this.config.ai.model,
+          engine: {
+            runner: 'goose',
+            provider: process.env.OPSPILOT_PROVIDER ?? 'goose-default',
+            model: process.env.OPSPILOT_MODEL ?? 'goose-default',
           },
           channels: {
             telegram: this.config.channels.telegram?.enabled ?? false,
@@ -126,7 +123,7 @@ export class GatewayServer {
         }
 
         // Get AI response
-        const response = await this.runtime.chat(context, message, memoryContext);
+        const response = await this.gooseChat(context, message, memoryContext);
 
         // Update conversation
         const userMessage: ChatMessage = {
@@ -196,10 +193,8 @@ export class GatewayServer {
             const encoder = new TextEncoder();
 
             try {
-              for await (const chunk of this.runtime.chatStream(context, message, memoryContext)) {
-                fullResponse += chunk;
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
-              }
+              fullResponse = await this.gooseChat(context, message, memoryContext);
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: fullResponse })}\n\n`));
 
               // Update conversation after stream completes
               context.messages.push(
@@ -293,6 +288,17 @@ export class GatewayServer {
     });
   }
 
+  private async gooseChat(context: ConversationContext, message: string, memoryContext: string[]): Promise<string> {
+    const memoryBlock = memoryContext.length > 0 ? `Relevant context from memory:\n${memoryContext.join('\n')}\n\n${message}` : message;
+    return runGooseChat({
+      message: memoryBlock,
+      workdir: join(homedir(), '.opspilot', 'workspace', 'goose-chat'),
+      history: context.messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
+      provider: process.env.OPSPILOT_PROVIDER,
+      model: process.env.OPSPILOT_MODEL,
+    });
+  }
+
   private getOrCreateConversation(id?: string, channel = 'api'): ConversationContext {
     if (id && this.conversations.has(id)) {
       return this.conversations.get(id)!;
@@ -362,11 +368,8 @@ export class GatewayServer {
               // Stream response
               ws.send(JSON.stringify({ type: 'start' }));
 
-              let fullResponse = '';
-              for await (const chunk of this.runtime.chatStream(context, data.message, memoryContext)) {
-                fullResponse += chunk;
-                ws.send(JSON.stringify({ type: 'chunk', text: chunk }));
-              }
+              const fullResponse = await this.gooseChat(context, data.message, memoryContext);
+              ws.send(JSON.stringify({ type: 'chunk', text: fullResponse }));
 
               // Update conversation
               context.messages.push(
@@ -443,7 +446,7 @@ export class GatewayServer {
     }
 
     // Get AI response
-    const response = await this.runtime.chat(context, message, memoryContext);
+    const response = await this.gooseChat(context, message, memoryContext);
 
     // Update conversation
     const userMessage: ChatMessage = {
@@ -477,10 +480,4 @@ export class GatewayServer {
     return this.app;
   }
 
-  /**
-   * Get the AI runtime for direct access
-   */
-  getRuntime(): AIRuntime {
-    return this.runtime;
-  }
 }
