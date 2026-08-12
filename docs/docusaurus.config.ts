@@ -12,10 +12,10 @@ const config: Config = {
   },
 
   url: 'https://agenticdevops.github.io',
-  baseUrl: '/xops/',
+  baseUrl: '/opspilot/', // tracks GH repo name; -> '/xops/' when repo renamed or custom domain (docs.xops.bot) wired
 
   organizationName: 'agenticdevops',
-  projectName: 'xops',
+  projectName: 'opspilot', // GH repo name (product is 'xops')
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
