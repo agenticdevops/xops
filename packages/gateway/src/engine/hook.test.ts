@@ -1,84 +1,93 @@
 import { describe, expect, test } from 'bun:test';
-import { parseGuardedCommand } from './hook';
+import { parseGuardedCommands, hookDecision } from './hook';
 
-describe('parseGuardedCommand (claude-acp PreToolUse: extract guarded invocation from a shell string)', () => {
-  test('no guarded tool referenced → none (command runs unguarded, like the PATH shim)', () => {
-    expect(parseGuardedCommand('bash /w/.goose/skills/x/scripts/diagnose.sh victim', 'docker')).toEqual({ kind: 'none' });
-    expect(parseGuardedCommand('cat SKILL.md', 'kubectl')).toEqual({ kind: 'none' });
-    expect(parseGuardedCommand('ls -la', 'docker')).toEqual({ kind: 'none' });
+describe('parseGuardedCommands (multi-stage pipeline/sequence aware)', () => {
+  test('no guarded tool → none (runs unguarded, like the PATH shim)', () => {
+    expect(parseGuardedCommands('bash diagnose.sh victim', 'docker')).toEqual({ kind: 'none' });
+    expect(parseGuardedCommands('cat SKILL.md', 'kubectl')).toEqual({ kind: 'none' });
   });
 
-  test('simple guarded invocation → its args', () => {
-    expect(parseGuardedCommand('docker update --memory 33554432 xops-victim', 'docker')).toEqual({
-      kind: 'invocation',
-      args: ['update', '--memory', '33554432', 'xops-victim'],
-    });
-    expect(parseGuardedCommand('kubectl -n demo get pods -o json', 'kubectl')).toEqual({
-      kind: 'invocation',
-      args: ['-n', 'demo', 'get', 'pods', '-o', 'json'],
+  test('single clean invocation → its args', () => {
+    expect(parseGuardedCommands('docker update --memory 33554432 xops-victim', 'docker')).toEqual({
+      kind: 'invocations', list: [['update', '--memory', '33554432', 'xops-victim']],
     });
   });
 
-  test('quoted args are preserved, quotes stripped', () => {
-    expect(parseGuardedCommand(`docker inspect x --format '{{.State.Status}}'`, 'docker')).toEqual({
-      kind: 'invocation',
-      args: ['inspect', 'x', '--format', '{{.State.Status}}'],
+  test('quoted args preserved', () => {
+    expect(parseGuardedCommands(`docker inspect x --format '{{.State.Status}}'`, 'docker')).toEqual({
+      kind: 'invocations', list: [['inspect', 'x', '--format', '{{.State.Status}}']],
     });
   });
 
-  test('metacharacters inside quotes do NOT trip the compound guard', () => {
-    expect(parseGuardedCommand(`docker inspect x --format '{{.A}} && {{.B}}'`, 'docker')).toEqual({
-      kind: 'invocation',
-      args: ['inspect', 'x', '--format', '{{.A}} && {{.B}}'],
+  test('pipe into a benign filter → the guarded stage only', () => {
+    expect(parseGuardedCommands('docker ps -a 2>&1 | head -30', 'docker')).toEqual({
+      kind: 'invocations', list: [['ps', '-a']],
+    });
+    expect(parseGuardedCommands(`docker inspect x --format '{{json .State}}' 2>&1 | jq .`, 'docker')).toEqual({
+      kind: 'invocations', list: [['inspect', 'x', '--format', '{{json .State}}']],
     });
   });
 
-  test('compound command containing the guarded tool → unparseable (fail-closed)', () => {
-    const cases: Array<[string, string]> = [
-      ['docker ps && docker rm xops-victim', 'docker'],
-      ['docker rm x; echo done', 'docker'],
-      ['kubectl get pods | grep bad', 'kubectl'],
-      ['echo $(docker rm x)', 'docker'],
-      ['docker inspect x `whoami`', 'docker'],
-    ];
-    for (const [cmd, tool] of cases) {
-      expect(parseGuardedCommand(cmd, tool).kind).toBe('unparseable');
-    }
-  });
-
-  test('a single guarded command with only a redirect parses (policy decides the verb)', () => {
-    // `kubectl delete ns prod >/dev/null` is one command — parses as an
-    // invocation; the CRITICAL deny happens at the policy layer, not here.
-    expect(parseGuardedCommand('kubectl delete ns prod >/dev/null', 'kubectl')).toEqual({
-      kind: 'invocation', args: ['delete', 'ns', 'prod'],
+  test('sequence of two guarded commands → both invocations', () => {
+    expect(parseGuardedCommands('docker update --memory 32m victim && docker restart victim', 'docker')).toEqual({
+      kind: 'invocations', list: [['update', '--memory', '32m', 'victim'], ['restart', 'victim']],
     });
   });
 
-  test('guarded tool not the leading command → unparseable (sh -c, env, xargs wrappers)', () => {
-    expect(parseGuardedCommand(`sh -c 'kubectl delete ns prod'`, 'kubectl').kind).toBe('unparseable');
-    expect(parseGuardedCommand('env docker rm x', 'docker').kind).toBe('unparseable');
-    expect(parseGuardedCommand('sudo docker rm x', 'docker').kind).toBe('unparseable');
-  });
-
-  test('trailing I/O redirects are allowed and stripped from args (2>&1, >/dev/null)', () => {
-    expect(parseGuardedCommand(`docker ps -a --format '{{.ID}}' 2>&1`, 'docker')).toEqual({
-      kind: 'invocation', args: ['ps', '-a', '--format', '{{.ID}}'],
-    });
-    expect(parseGuardedCommand('docker inspect x >/dev/null 2>&1', 'docker')).toEqual({
-      kind: 'invocation', args: ['inspect', 'x'],
-    });
-    expect(parseGuardedCommand('kubectl get pods -n demo 2>/dev/null', 'kubectl')).toEqual({
-      kind: 'invocation', args: ['get', 'pods', '-n', 'demo'],
+  test('sleep then guarded command → the guarded stage', () => {
+    expect(parseGuardedCommands('sleep 20 && docker inspect victim', 'docker')).toEqual({
+      kind: 'invocations', list: [['inspect', 'victim']],
     });
   });
 
-  test('redirect does not smuggle a second command past the guard', () => {
-    // `>` then `&&` still chains — must deny
-    expect(parseGuardedCommand('docker ps > /tmp/x && docker rm victim', 'docker').kind).toBe('unparseable');
+  test('trailing redirects stripped from args', () => {
+    expect(parseGuardedCommands('kubectl get pods -n demo 2>/dev/null', 'kubectl')).toEqual({
+      kind: 'invocations', list: [['get', 'pods', '-n', 'demo']],
+    });
   });
 
-  test('tool name as a substring of another token is not a match', () => {
-    expect(parseGuardedCommand('docker-compose up', 'docker')).toEqual({ kind: 'none' });
-    expect(parseGuardedCommand('dockerize -wait x', 'docker')).toEqual({ kind: 'none' });
+  test('command substitution / backticks referencing the tool → deny (can hide a call)', () => {
+    expect(parseGuardedCommands('echo $(docker rm x)', 'docker').kind).toBe('unparseable');
+    expect(parseGuardedCommands('docker inspect x `docker rm y`', 'docker').kind).toBe('unparseable');
+  });
+
+  test('tool wrapped so it is not a clean stage leader → deny', () => {
+    expect(parseGuardedCommands(`sh -c 'docker rm x'`, 'docker').kind).toBe('unparseable');
+    expect(parseGuardedCommands('env docker rm x', 'docker').kind).toBe('unparseable');
+    expect(parseGuardedCommands('xargs docker rm', 'docker').kind).toBe('unparseable');
+  });
+
+  test('tool as substring is not a match', () => {
+    expect(parseGuardedCommands('docker-compose up', 'docker')).toEqual({ kind: 'none' });
+    expect(parseGuardedCommands('dockerize -wait x | head', 'docker')).toEqual({ kind: 'none' });
+  });
+});
+
+const POLICY = { tool: 'docker', grants: ['ps', 'inspect', 'logs', 'restart', 'update'], target: 'xops-victim' };
+
+describe('hookDecision (PreToolUse Bash → allow/deny)', () => {
+  test('allows non-guarded commands', () => {
+    expect(hookDecision('bash diagnose.sh xops-victim', POLICY).allowed).toBe(true);
+    expect(hookDecision('cat SKILL.md', POLICY).allowed).toBe(true);
+  });
+
+  test('allows granted reads piped to filters', () => {
+    expect(hookDecision('docker ps -a 2>&1 | head -30', POLICY).allowed).toBe(true);
+    expect(hookDecision('docker logs xops-victim 2>&1 | tail -20', POLICY).allowed).toBe(true);
+  });
+
+  test('allows a granted, on-target mutation (and a sequence of them)', () => {
+    expect(hookDecision('docker update --memory 33554432 xops-victim', POLICY).allowed).toBe(true);
+    expect(hookDecision('docker update --memory 32m xops-victim && docker restart xops-victim', POLICY).allowed).toBe(true);
+  });
+
+  test('denies if ANY stage is CRITICAL or off-target', () => {
+    expect(hookDecision('docker ps && docker rm -f xops-victim', POLICY).allowed).toBe(false);
+    expect(hookDecision('docker restart production-db', POLICY).allowed).toBe(false);
+  });
+
+  test('denies substitution / wrappers (fail-closed)', () => {
+    expect(hookDecision('echo $(docker rm xops-victim)', POLICY).allowed).toBe(false);
+    expect(hookDecision(`sh -c 'docker rm xops-victim'`, POLICY).allowed).toBe(false);
   });
 });

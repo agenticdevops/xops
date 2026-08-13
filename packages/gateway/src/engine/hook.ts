@@ -1,45 +1,59 @@
 /**
- * Parse a guarded-tool invocation out of a raw shell command string, for the
+ * Parse guarded-tool invocations out of a raw shell command string, for the
  * Claude Code PreToolUse Bash hook used on the claude-acp provider (where the
  * agent runs commands through Claude Code's Terminal, not goose's PATH-shimmed
- * shell). Fail-closed: anything compound or obfuscated that references the
- * guarded tool is reported unparseable so the hook can deny it.
+ * shell).
+ *
+ * A command may be a pipeline or sequence of stages. Every stage that invokes
+ * the guarded tool is evaluated against policy; benign filter stages (head,
+ * jq, grep, ...) are ignored — they cannot invoke the guarded tool. I/O
+ * redirects only affect a single stage's streams and are stripped. Genuine
+ * hiding — command substitution `$()`, backticks, or the tool wrapped so it is
+ * not a clean stage leader (`sh -c '...'`, `env docker ...`) — is denied
+ * fail-closed.
  */
-
 import { evaluateCommand, type GuardDecision } from './guard';
 
-export type ParsedCommand =
+export type ParsedCommands =
   | { kind: 'none' } // no guarded tool referenced — runs unguarded, same as the PATH shim
-  | { kind: 'invocation'; args: string[] } // a single clean `<tool> args...` invocation
-  | { kind: 'unparseable'; reason: string }; // guarded tool present but can't be isolated → deny
-
-interface Lexed {
-  tokens: string[]; // command words up to the first I/O redirect
-  compound: boolean; // saw an unquoted command-chaining / substitution operator
-}
+  | { kind: 'invocations'; list: string[][] } // one arg-list per guarded stage
+  | { kind: 'unparseable'; reason: string }; // guarded tool present but hidden/obfuscated → deny
 
 /**
- * Split on unquoted whitespace, honoring single/double quotes.
- * - `compound` flags genuine chaining/substitution: `&&`, `||`, `;`, `|`,
- *   backtick, `$`, subshell `()`, a standalone `&`, or `\` — any of which can
- *   run or hide a SECOND command. These are denied.
- * - I/O redirects (`>`, `>>`, `<`, `2>&1`, `&>`, `2>/dev/null`) only affect the
- *   single command's streams. They are NOT compound; arg collection stops at
- *   the first redirect (the rest is stream plumbing), but scanning continues so
- *   a chaining operator after a redirect (`> x && rm`) is still caught.
+ * Whole-word match where `-` counts as part of the word, so `docker` does NOT
+ * match `docker-compose`/`dockerize`, but DOES match the tool inside quotes
+ * (e.g. `sh -c 'docker ...'`) so wrapped invocations are still detected.
  */
+function referencesToolWord(text: string, tool: string): boolean {
+  const esc = tool.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![\\w-])${esc}(?![\\w-])`).test(text);
+}
+
+interface Lexed {
+  stages: string[][]; // command words per stage; redirect plumbing stripped
+  deny: boolean; // saw command substitution / backtick / escape — can hide a call
+}
+
+/** Split into stages on unquoted `| ; && || &`, honoring quotes; strip redirects. */
 function lex(command: string): Lexed {
-  const tokens: string[] = [];
+  const stages: string[][] = [];
+  let stage: string[] = [];
   let cur = '';
   let has = false;
-  let compound = false;
-  let redirected = false; // past the first redirect: stop collecting args, keep scanning
+  let deny = false;
+  let redirected = false; // past the first redirect in this stage: stop collecting args
   let quote: "'" | '"' | null = null;
 
-  const push = () => {
-    if (has && !redirected) tokens.push(cur);
+  const pushToken = () => {
+    if (has && !redirected) stage.push(cur);
     cur = '';
     has = false;
+  };
+  const endStage = () => {
+    pushToken();
+    if (stage.length) stages.push(stage);
+    stage = [];
+    redirected = false;
   };
 
   for (let i = 0; i < command.length; i++) {
@@ -59,63 +73,73 @@ function lex(command: string): Lexed {
       continue;
     }
     if (c === ' ' || c === '\t' || c === '\n') {
-      push();
+      pushToken();
       continue;
     }
-    // chaining / substitution → compound (deny)
-    if (c === ';' || c === '|' || c === '`' || c === '$' || c === '(' || c === ')' || c === '\\' || c === '\n') {
-      compound = true;
+    if (c === '|') {
+      endStage();
+      if (next === '|') i++; // ||
+      continue;
+    }
+    if (c === ';') {
+      endStage();
       continue;
     }
     if (c === '&') {
+      if (next === '&') {
+        endStage();
+        i++;
+        continue;
+      }
       if (next === '>') {
         // &> redirect
-        push();
+        pushToken();
         redirected = true;
         i++;
         continue;
       }
-      // && or standalone & (background/chain) → compound
-      compound = true;
-      if (next === '&') i++;
+      endStage(); // lone & (background) separates commands
       continue;
     }
     if (c === '>' || c === '<') {
-      // redirect (incl. >>, >&, 2>&1). A preceding fd digit (2>, 1>) is already in cur.
       if (has && /^\d+$/.test(cur)) {
         cur = '';
-        has = false; // drop the bare fd number, it's plumbing not an arg
+        has = false; // drop a bare fd number (2>, 1>) — plumbing, not an arg
       } else {
-        push();
+        pushToken();
       }
       redirected = true;
       if (next === c) i++; // >>
-      else if (next === '&') i++; // >& / 2>&1 fd-dup — consume the &, the fd digit after is dropped as plumbing
+      else if (next === '&') i++; // >& / 2>&1 fd-dup
+      continue;
+    }
+    if (c === '`' || c === '$' || c === '(' || c === ')' || c === '\\') {
+      deny = true; // substitution / subshell / escape
       continue;
     }
     cur += c;
     has = true;
   }
-  push();
-  return { tokens, compound };
+  endStage();
+  return { stages, deny };
 }
 
-/**
- * Whole-word match where `-` counts as part of the word, so `docker` does NOT
- * match `docker-compose`/`dockerize`, but DOES match the tool inside quotes
- * (e.g. `sh -c 'kubectl ...'`) so obfuscated invocations are still detected.
- */
-function referencesToolWord(command: string, tool: string): boolean {
-  const esc = tool.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?<![\\w-])${esc}(?![\\w-])`).test(command);
-}
-
-export function parseGuardedCommand(command: string, tool: string): ParsedCommand {
+export function parseGuardedCommands(command: string, tool: string): ParsedCommands {
   if (!referencesToolWord(command, tool)) return { kind: 'none' };
-  const { tokens, compound } = lex(command);
-  if (compound) return { kind: 'unparseable', reason: `compound command referencing ${tool}` };
-  if (tokens[0] !== tool) return { kind: 'unparseable', reason: `${tool} is not the leading command (wrapper/obfuscation)` };
-  return { kind: 'invocation', args: tokens.slice(1) };
+  const { stages, deny } = lex(command);
+  if (deny) return { kind: 'unparseable', reason: `command substitution referencing ${tool}` };
+
+  const list: string[][] = [];
+  for (const tokens of stages) {
+    if (tokens.length === 0) continue;
+    if (tokens[0] === tool) {
+      list.push(tokens.slice(1));
+    } else if (tokens.some((t) => referencesToolWord(t, tool))) {
+      return { kind: 'unparseable', reason: `${tool} is wrapped / not a clean command (obfuscation)` };
+    }
+  }
+  if (list.length === 0) return { kind: 'none' };
+  return { kind: 'invocations', list };
 }
 
 export interface HookPolicy {
@@ -125,22 +149,31 @@ export interface HookPolicy {
   target?: string;
 }
 
+const TIER_RANK: Record<string, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
+
 /**
  * Decide allow/deny for a Claude Code Bash command on the claude-acp path.
- * A command that does not reference the guarded tool runs unguarded (parity
- * with the PATH shim). A clean guarded invocation is evaluated by the same
- * `evaluateCommand` policy as the shim. Compound/obfuscated commands that
- * reference the tool are denied (fail-closed).
+ * Non-guarded commands run unguarded (parity with the PATH shim). Every
+ * guarded stage is evaluated by the same `evaluateCommand` policy as the shim;
+ * the command is allowed only if ALL guarded stages are allowed. The returned
+ * tier is the highest among the allowed stages (for logging/verify signals).
  */
 export function hookDecision(command: string, policy: HookPolicy): GuardDecision {
-  const parsed = parseGuardedCommand(command, policy.tool);
+  const parsed = parseGuardedCommands(command, policy.tool);
   if (parsed.kind === 'none') return { allowed: true, reason: 'no guarded tool' };
   if (parsed.kind === 'unparseable') return { allowed: false, reason: parsed.reason };
-  return evaluateCommand({
-    tool: policy.tool,
-    args: parsed.args,
-    skillGrants: policy.grants,
-    namespace: policy.namespace,
-    target: policy.target,
-  });
+
+  let best: GuardDecision = { allowed: true, reason: 'ok', tier: 'LOW' };
+  for (const args of parsed.list) {
+    const d = evaluateCommand({
+      tool: policy.tool,
+      args,
+      skillGrants: policy.grants,
+      namespace: policy.namespace,
+      target: policy.target,
+    });
+    if (!d.allowed) return d;
+    if (d.tier && (TIER_RANK[d.tier] ?? 0) >= (TIER_RANK[best.tier ?? 'LOW'] ?? 0)) best = d;
+  }
+  return best;
 }
