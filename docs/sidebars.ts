@@ -27,6 +27,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Features',
       items: [
+        'features/bots',
         'features/memory',
         'features/skills',
         'features/automation',
