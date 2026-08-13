@@ -8,16 +8,22 @@ xops's safety design assumes the model **will** eventually emit a dangerous comm
 
 Action runs get a kubeconfig for a ServiceAccount bound to a Role in **one namespace**, with only the verbs runbooks need. Enforced by the API server: even a fully compromised agent process holding this file cannot read secrets, touch other namespaces, or delete the namespace it's in. Tokens live 2 hours.
 
-### 2. Fail-closed command guard (defense-in-depth)
+### 2. Command guard — read / write / dangerous (defense-in-depth)
 
-Every `kubectl`/`docker` invocation resolves to a generated shim that consults the guard before executing:
+Every `kubectl`/`docker` invocation is categorized by a risk taxonomy and gated by policy. A bot is a general-purpose operator (not locked to one container or namespace); the guard governs *what class of operation* it may perform, by **mode**:
 
-- **Risk taxonomy** — 186 commands classified LOW / MEDIUM / HIGH / CRITICAL. CRITICAL (`delete`, `rm`, `prune`, `drain`, ...) is denied unconditionally — no mode or grant permits it.
-- **Skill grants** — the runbook's frontmatter declares its allowed commands; anything else is denied.
-- **Pinning** — kubectl commands must target the run's namespace (`--all-namespaces`, `--kubeconfig`, `--context` are denied); docker mutations must name the run's target container.
-- **Fail-closed parsing** — unknown leading flags are denied rather than skipped (flag-tricks like `docker --debug rm ...` don't get classified around).
-- Policy is **baked into the shim file** at generation time, not read from environment variables the agent's shell could override.
+| Category | Examples | Policy |
+|---|---|---|
+| **read** (LOW) | `docker ps`, `inspect`, `logs`; `kubectl get`, `describe`, `config view` | **allow** — no side effects |
+| **write** (MEDIUM/HIGH) | `docker run`, `restart`, `update`; `kubectl patch`, `scale`, `config set-context` | **mode-gated** — `auto` allows, `safe` blocks (interactive `ask` is on the roadmap) |
+| **dangerous** (CRITICAL) | `docker rm`, `rmi`, `prune`; `kubectl delete`, `drain` | **block** — always, in every mode |
+
+- **Subcommand granularity** — categorization is at the subcommand level: `kubectl config view` is read but `config set-context` is write; `docker system df` is read but `system prune` is dangerous.
+- **Verb detection can't be tricked** — leading global flags are handled so a hidden verb (`docker --debug rm x`) still surfaces and is blocked.
+- Policy (tool + mode) is **baked into the shim/hook** at generation time, never read from environment variables the agent's shell could override.
 - Every decision is appended to `guard.jsonl` — the audit trail.
+
+Set the mode with `XOPS_MODE=auto|safe` (default `auto`).
 
 ### 3. Two enforcement paths, one policy
 
@@ -34,4 +40,6 @@ Both paths write to the same `guard.jsonl`. This closed a real bypass found in t
 - **RBAC token refresh is manual** (2-hour expiry, re-run the provision script).
 - **No human-approval tier yet** — HIGH commands run when granted by a skill. Risk-tiered approval flow (queue HIGH for a Telegram approve/deny) is roadmap.
 
-These are tracked from an adversarial security review of the guard (2026-08-12); the confirmed bypasses found there (env-override, flag-swallow, taxonomy gaps, cluster-escape flags, target scoping) are fixed and regression-tested.
+- **`write` currently has no interactive approval.** In `auto` mode writes run; in `safe` mode they are blocked. The `ask` tier — pause the run, request approval over the channel (Telegram approve/deny), resume on reply — is the next planned piece. Until then, use `safe` mode when you want a human gate on all mutations.
+
+These are tracked from an adversarial security review of the guard (2026-08-12) and a claude-acp guard-bypass fix (2026-08-13). The confirmed issues found (env-override, flag-swallow, taxonomy gaps, and the claude-acp PATH-shim bypass) are fixed and regression-tested.

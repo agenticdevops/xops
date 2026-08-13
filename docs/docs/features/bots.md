@@ -6,7 +6,7 @@ sidebar_position: 1
 
 > **Status: new in this build.** Two bots ship: Kubernetes SRE Bot and Docker Ops Bot.
 
-A **bot** is the specialist you talk to — modeled on a job role. You pick a bot, optionally point it at a **project** (a namespace or container it's scoped to), and talk to it. The bot answers questions directly, and when you ask it to fix something it loads the matching runbook (skill) and follows it — every command through the fail-closed guard, scoped to the project's credentials.
+A **bot** is the specialist you talk to — modeled on a job role. You pick a bot and talk to it. It answers questions directly, and when you ask it to fix something it loads the matching runbook (skill) and follows it. It is a general-purpose operator within its platform (Kubernetes or Docker) — every command it runs passes through the guard, which classifies operations as **read** (allowed), **write** (allowed in `auto` mode, blocked in `safe` mode), or **dangerous** (always blocked). See [Security](../advanced/security.md#2-command-guard--read--write--dangerous-defense-in-depth). Point a bot at a **project** to give it scoped Kubernetes credentials and context.
 
 ## Bundled bots
 
