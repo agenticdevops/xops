@@ -6,3 +6,4 @@ export * from './config';
 export * from './types';
 export * from './utils';
 export * from './skills';
+export * from './bots';
