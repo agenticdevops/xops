@@ -19,13 +19,18 @@ Every `kubectl`/`docker` invocation resolves to a generated shim that consults t
 - Policy is **baked into the shim file** at generation time, not read from environment variables the agent's shell could override.
 - Every decision is appended to `guard.jsonl` — the audit trail.
 
-### 3. Tool-less chat
+### 3. Two enforcement paths, one policy
 
-Conversational turns run a goose recipe with **no extensions**: chat cannot execute anything. Execution happens only through skill runs with the boundaries above.
+How commands reach the system depends on the goose provider, so the guard enforces at both layers with the same policy:
+
+- **Native providers** (ollama, Anthropic API): goose runs tools through its own shell, so a per-run **PATH shim** (`bin/kubectl`, `bin/docker`) intercepts every call.
+- **claude-acp** (Claude subscription): tool execution is delegated to Claude Code, whose Terminal runs in a shell that resets PATH — bypassing the shim. Here a generated **Claude Code PreToolUse hook** (`<workdir>/.claude/settings.json`) enforces the identical policy at Claude Code's own tool layer. It parses pipelines/sequences, evaluates every guarded stage, and denies genuine hiding (command substitution, wrapped invocations). Exit code 2 hard-blocks; the hook defaults to deny on any error (Claude Code fails open on hook crash).
+
+Both paths write to the same `guard.jsonl`. This closed a real bypass found in testing where a `docker` mutation executed unguarded on claude-acp (fixed 2026-08-13).
 
 ## Known limitations (current, honest)
 
-- **The shim is same-user.** The agent's shell runs as the same OS user as the shim, so a determined agent can invoke `/usr/bin/docker` directly or rewrite the shim. For Kubernetes this doesn't matter — RBAC is the hard boundary. **For Docker there is currently no equivalent hard boundary**; the guard is best-effort until a socket-proxy or rootless-context boundary ships. Treat docker runs accordingly.
+- **The guard is same-user, so it is defense-in-depth, not a sandbox.** Both the shim and the hook run as the same OS user as the agent. For Kubernetes the hard boundary is the RBAC-scoped kubeconfig (enforced by the API server, not by us). **For Docker there is no equivalent hard boundary** — the guard (shim + hook) is best-effort until a socket-proxy or rootless-context boundary ships. Treat docker runs accordingly.
 - **RBAC token refresh is manual** (2-hour expiry, re-run the provision script).
 - **No human-approval tier yet** — HIGH commands run when granted by a skill. Risk-tiered approval flow (queue HIGH for a Telegram approve/deny) is roadmap.
 
