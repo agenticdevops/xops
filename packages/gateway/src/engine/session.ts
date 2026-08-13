@@ -8,7 +8,7 @@ import { join, resolve } from 'path';
 import type { Bot, Project } from '../../../core/src/bots';
 import { grantsFor } from '../../../core/src/skills';
 import { renderBotRecipe } from './recipe';
-import { runGooseProcess, findRealTool, writeGuardShim } from './spawn';
+import { runGooseProcess, findRealTool, writeGuardShim, writeClaudeGuardHook } from './spawn';
 import { parseGooseOutput } from './parse';
 import { verifyContainer, verifyNamespace } from './verify';
 
@@ -65,12 +65,13 @@ export async function runBotTurn(req: BotTurnRequest): Promise<BotTurnResult> {
   writeFileSync(guardLogPath, '');
   const guardCli = join(import.meta.dir, 'guard-cli.ts');
   const realTool = findRealTool(tool, join(wd, 'bin'));
-  writeGuardShim({
-    wd, tool, grants,
-    ns: bot.platform === 'docker' ? '' : scope,
-    target: bot.platform === 'docker' ? scope : '',
-    guardLogPath, guardCliPath: guardCli, realTool,
-  });
+  const shimNs = bot.platform === 'docker' ? '' : scope;
+  const shimTarget = bot.platform === 'docker' ? scope : '';
+  writeGuardShim({ wd, tool, grants, ns: shimNs, target: shimTarget, guardLogPath, guardCliPath: guardCli, realTool });
+  // claude-acp executes tools via Claude Code (bypasses the PATH shim); a
+  // fail-closed PreToolUse hook enforces the same policy there. Inert on
+  // native providers.
+  writeClaudeGuardHook({ wd, tool, grants, ns: shimNs, target: shimTarget, guardLogPath, guardCliPath: guardCli });
 
   const recipePath = join(wd, 'recipe.yaml');
   writeFileSync(recipePath, renderBotRecipe({

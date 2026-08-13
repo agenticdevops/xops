@@ -111,7 +111,8 @@
         "network prune": "CRITICAL",
         "network ls": "LOW",
         "compose down": "CRITICAL",
-        "compose up": "HIGH"
+        "compose up": "HIGH",
+        "update": "HIGH"
       }
     },
     "aws": {
