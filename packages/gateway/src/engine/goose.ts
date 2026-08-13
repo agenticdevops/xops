@@ -13,6 +13,7 @@ import { join, resolve } from 'path';
 import { renderRecipe, type EngineProfile } from './recipe';
 import { parseGooseOutput, type GooseResult } from './parse';
 import { runGooseProcess, findRealTool, writeGuardShim } from './spawn';
+import { parseSkillGrants } from '../../../core/src/skills';
 
 export interface EngineRunOptions {
   target: string; // namespace (k8s) or container name/pattern (docker)
@@ -45,16 +46,6 @@ const PROFILE_TOOL: Record<EngineProfile, string> = { k8s: 'kubectl', docker: 'd
 const LEGACY_GRANTS: Record<string, string[]> = {
   'k8s-pod-restart-triage': ['get', 'describe', 'logs', 'patch', 'set', 'rollout', 'scale', 'top', 'events'],
 };
-
-/** Parse `grants: [a, b, c]` from SKILL.md frontmatter (metadata.xops.grants). */
-export function parseSkillGrants(skillMd: string): string[] | null {
-  const m = skillMd.match(/grants:\s*\[([^\]]*)\]/);
-  if (!m) return null;
-  return m[1]
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 export function prepWorkdir(opts: EngineRunOptions): {
   recipePath: string;
