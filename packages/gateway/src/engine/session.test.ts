@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { join, resolve } from 'path';
-import { mutatedInGuardLog } from './session';
+import { mutatedInGuardLog, shouldVerify } from './session';
 import { grantsFor } from '../../../core/src/skills';
 import { listBots } from '../../../core/src/bots';
 
@@ -27,5 +27,24 @@ describe('mutatedInGuardLog', () => {
   });
   test('false for empty log (pure chat turn)', () => {
     expect(mutatedInGuardLog([])).toBe(false);
+  });
+});
+
+describe('shouldVerify', () => {
+  // Verify decision must NOT depend on seeing a HIGH command in the guard log:
+  // on the claude-acp provider the log can undercount (Claude Code executes
+  // some commands outside our shim). Any operational turn (>=1 command ran)
+  // with a project scope gets independently verified.
+  test('verifies when a project is set and any command ran (even only reads)', () => {
+    expect(shouldVerify([{ allowed: true, tier: 'LOW' }], true)).toBe(true);
+  });
+  test('verifies a mutation turn with a project', () => {
+    expect(shouldVerify([{ allowed: true, tier: 'HIGH' }], true)).toBe(true);
+  });
+  test('skips pure-chat turn (no command ran)', () => {
+    expect(shouldVerify([], true)).toBe(false);
+  });
+  test('skips when there is no project scope to verify against', () => {
+    expect(shouldVerify([{ allowed: true, tier: 'HIGH' }], false)).toBe(false);
   });
 });

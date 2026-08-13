@@ -36,6 +36,17 @@ export function mutatedInGuardLog(guardLog: Array<Record<string, unknown>>): boo
   return guardLog.some((g) => g.allowed === true && g.tier === 'HIGH');
 }
 
+/**
+ * Whether to run independent verification after a turn. Triggers on any
+ * operational turn (>=1 command ran) with a project scope — deliberately NOT
+ * gated on seeing a HIGH command, because the guard log can undercount on the
+ * claude-acp provider (Claude Code executes some commands outside our shim).
+ * Pure-chat turns (no command ran) skip verification.
+ */
+export function shouldVerify(guardLog: Array<Record<string, unknown>>, hasProject: boolean): boolean {
+  return hasProject && guardLog.length > 0;
+}
+
 export async function runBotTurn(req: BotTurnRequest): Promise<BotTurnResult> {
   const started = Date.now();
   const { bot, project } = req;
@@ -100,7 +111,7 @@ export async function runBotTurn(req: BotTurnRequest): Promise<BotTurnResult> {
   const acted = mutatedInGuardLog(guardLog);
   let verified: boolean | null = null;
   let verifyLine = '';
-  if (acted && project) {
+  if (shouldVerify(guardLog, !!project) && project) {
     const verdict = bot.platform === 'docker'
       ? await verifyContainer(project.scope)
       : await verifyNamespace(project.scope, project.kubeconfig);
