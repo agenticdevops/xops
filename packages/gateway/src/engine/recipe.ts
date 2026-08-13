@@ -81,3 +81,53 @@ prompt: |
      exact commands, verification result.
 `;
 }
+
+export interface BotRecipeOptions {
+  botDisplay: string;
+  platform: EngineProfile;
+  skills: string[];
+  scope: string;
+  brief?: string;
+  identity?: string;
+}
+
+export function renderBotRecipe(opts: BotRecipeOptions): string {
+  const tool = opts.platform === 'docker' ? 'docker' : 'kubectl';
+  const scopeWord = opts.platform === 'docker' ? 'container' : 'namespace';
+  const candidates = opts.skills
+    .map((s) => `    - ${s}: cat .goose/skills/${s}/SKILL.md`)
+    .join('\n');
+  const identity = opts.identity ? `${opts.identity}\n  ` : '';
+  const brief = opts.brief ? `  Project brief: ${opts.brief}\n` : '';
+  return `version: 1.0.0
+title: ${opts.botDisplay} session turn
+description: Unified scoped bot session (answer or run a runbook)
+parameters:
+  - key: message
+    input_type: string
+    requirement: required
+    description: The user's message this turn
+instructions: |
+  ${identity}You are ${opts.botDisplay}, a scoped ops copilot. You operate ONLY on
+  ${scopeWord} ${opts.scope} using ${tool}. This is a non-interactive automated
+  run: never ask the user questions; issue one tool call at a time; never run
+  tools in parallel.
+${brief}  You may simply ANSWER the user's question conversationally when no action is
+  needed. When the user asks you to fix or diagnose something, choose the
+  best-matching runbook from the list below, read it with the shell tool, and
+  follow its procedure and decision table exactly. A description is not a fix —
+  execute the mapped command. Never exceed the commands your runbooks sanction.
+  Available runbooks:
+${candidates}
+  After any fix, verify per the runbook and report: root cause, commands run,
+  and verification result.
+extensions:
+  - type: builtin
+    name: developer
+    timeout: 300
+    bundled: true
+    available_tools: [shell]
+prompt: |
+  {{ message }}
+`;
+}
