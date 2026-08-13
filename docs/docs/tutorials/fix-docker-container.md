@@ -2,136 +2,118 @@
 sidebar_position: 1
 ---
 
-# Fixing a Crashing Container with a Guarded Agent
+# Hands-on: A Docker Ops Bot That Fixes, Observes, and Obeys Guardrails
 
-In this lab, you are going to break a Docker container on purpose, hand it to xops, and study how a guarded agent run actually works — the runbook, the guard decisions, and the independent verification. Everything runs on your own machine; no cluster, no cloud account.
+In this lab you drive the **Docker Ops Bot** against a deliberately broken container and watch the whole model in action: it answers read-only questions freely, applies a real fix, gets blocked when it reaches for a destructive command, and refuses to mutate at all when you put it in `safe` mode. Everything runs on your machine — no cluster, no cloud.
 
 ## What will you learn
 
-- How an xops **skill** (executable runbook) is structured
-- How the **fail-closed guard** decides which commands the agent may run
-- Why xops verifies system state itself instead of trusting the agent's report
+- How a bot **fixes in place** and independently **verifies** the result
+- The guard's three classes — **read** (allow), **write** (mode-gated), **dangerous** (always blocked)
+- How **`auto` vs `safe` mode** changes what the bot may do
 
 ## Pre Requisites
 
 - xops installed and `bun test` passing — see [Getting Started](../getting-started.md)
 - Docker running locally
-- goose 1.45+ with a configured provider
+- goose 1.45+ with a provider configured (`claude-acp` uses your Claude subscription; any goose provider works)
 
-## Read the runbook first
-
-Before running anything, look at the skill the agent will follow.
-
-To **inspect** the runbook:
+`set XOPS_PROVIDER once so the commands below are shorter:`
 
 ```
-cat packages/skills/bundled/docker-container-triage/SKILL.md
+export XOPS_PROVIDER=claude-acp
 ```
 
-Three parts matter:
+## PART I — Fix a broken container
 
-**The grants** — in the frontmatter, the skill declares every command it is allowed to use:
-
-```
-grants: [ps, inspect, logs, stats, events, restart, update]
-```
-
-`rm`, `rmi`, and `prune` are absent. Even if the model decides removal is a good idea, the guard will refuse — a command must be both granted by the skill *and* below CRITICAL in the risk taxonomy.
-
-**The diagnose script** — `scripts/diagnose.sh` collects evidence deterministically and emits JSON: container state, exit code, OOM flag, restart count, memory limit, health status, log tail. The agent is instructed to run this *first* and reason from its output, not from ad-hoc exploration.
-
-**The decision table** — maps evidence patterns to fixes:
-
-| Evidence | Root cause | Fix |
-|---|---|---|
-| `oom_killed == true` or exit 137 with memory limit set | Memory limit too low | Raise the limit ~2x and restart |
-
-Anything that doesn't match a row escalates to a human instead of guessing.
-
-## Break a container
-
-To **seed** the fault:
+To **break** a container — a process that allocates more memory than its limit, so the kernel OOM-kills it:
 
 ```
 bash scripts/seed-docker-fault.sh oom
 ```
 
-This starts `xops-victim`: a Python process allocating 24MB inside a 16MB memory limit, with `--restart on-failure:3`.
-
-**Observe** what happens over the next half minute:
+**Observe** the state:
 
 ```
-docker ps -a --filter name=xops-victim --format '{{.Names}} {{.Status}}'
-```
-
-The container cycles through `Restarting (137)` and settles at `Exited (137)` once its restart budget is spent. Exit code 137 is the kernel's OOM kill. Why does it never reach `Up`?
-
-## Run the diagnose script yourself
-
-The agent will run this script — run it yourself first so you know what evidence it sees:
-
-```
-bash packages/skills/bundled/docker-container-triage/scripts/diagnose.sh xops-victim
-```
-
-```
-[ Expected output (abridged) ]
-{
-  "state": {"status": "exited", "exit_code": 137, "oom_killed": true},
-  "restart_count": 3,
-  "memory_limit_bytes": 16777216
-}
-```
-
-Match this against the decision table yourself: `oom_killed == true`, exit 137, memory limit set. That is the OOM row. The mapped fix is to raise the limit and restart. You have just done manually what the agent is about to do.
-
-## Hand it to the agent
-
-```
-bun scripts/poc-run.ts docker xops-victim
-```
-
-The run takes one to three minutes. When it completes, study the guard log section:
-
-```
-[ Expected output ]
-[poc] guard decisions: 5
-  ALLOW docker ps -a --filter name=xops-victim --format {{.ID}}
-  ALLOW docker inspect 9982033976ac
-  ALLOW docker logs --tail 20 9982033976ac
-  ALLOW docker update --memory 33554432 --memory-swap 33554432 xops-victim
-  ALLOW docker restart xops-victim
-```
-
-Read it as a story: three read-only commands (that's the diagnose script executing under the shim), then exactly the fix the decision table mapped — memory doubled to 32MB, restart. No exploration, no improvisation, no destructive commands attempted.
-
-Every one of these lines is also in `~/.xops/workspace/goose-poc/guard.jsonl` — the audit trail, one JSON record per decision, including the risk tier of each command.
-
-## Verify the real state
-
-xops already verified independently — but check yourself anyway:
-
-```
-docker inspect xops-victim --format 'status={{.State.Status}} oom={{.State.OOMKilled}} mem={{.HostConfig.Memory}} restarts={{.RestartCount}}'
+docker inspect xops-victim --format '{{.State.Status}} oom={{.State.OOMKilled}} mem={{.HostConfig.Memory}}'
 ```
 
 ```
 [ Expected output ]
-status=running oom=false mem=33554432 restarts=0
+exited oom=true mem=16777216
 ```
 
-Running, no OOM kill, doubled limit, zero restarts since the fix.
+To **hand it to the bot** (default mode is `auto` — writes allowed):
+
+```
+bun scripts/bot-run.ts docker-ops xops-victim "the container keeps dying, fix it"
+```
+
+A run takes one to a few minutes. The bot reads its runbook, diagnoses OOM, raises the memory limit **in place** with `docker update`, restarts, and verifies. Expected tail:
+
+```
+[bot-run] acted=true verified=true wall=210s
+
+**Root cause:** OOM kill (exit 137, 16 MB limit too low).
+**Fix:** docker update --memory 33554432 ... ; docker restart xops-victim
+
+---
+✅ verified: xops-victim running
+```
+
+**Verify it yourself** — xops already did, independently, but don't take its word (it doesn't take the agent's):
+
+```
+docker inspect xops-victim --format '{{.State.Status}} oom={{.State.OOMKilled}} mem={{.HostConfig.Memory}}'
+```
+
+```
+[ Expected output ]
+running oom=false mem=33554432
+```
+
+## PART II — Watch the guardrails
+
+### Reads run freely
+
+Ask a read-only question. The bot runs `docker ps`, `stats`, `inspect` — all **read** class, allowed regardless of mode:
+
+```
+bun scripts/bot-run.ts docker-ops xops-victim "which of my containers is using the most memory right now?"
+```
+
+It answers from live `docker stats`/`ps` output. `acted=false` — nothing was changed, so no verification runs.
+
+### Dangerous commands are blocked
+
+Ask it to clean up. The bot's honest move would be `docker rm` / `docker prune` — both **dangerous**, blocked in every mode:
+
+```
+bun scripts/bot-run.ts docker-ops xops-victim "remove the old stopped containers to free space"
+```
+
+**Observe** the guard log for the run (each run has its own workdir under `~/.xops/workspace/bot-runs/`):
+
+```
+cat "$(ls -dt ~/.xops/workspace/bot-runs/turn-docker-ops-* | head -1)/guard.jsonl" | grep dangerous
+```
+
+You will see `docker rm ...` / `docker prune` logged with `"allowed":false` — the bot could not delete anything, and it reports that it's blocked rather than working around it.
+
+### Safe mode gates every write
+
+Re-break the container, then run the **same fix** in `safe` mode:
+
+```
+bash scripts/seed-docker-fault.sh oom
+XOPS_MODE=safe bun scripts/bot-run.ts docker-ops xops-victim "fix it"
+```
+
+This time even the in-place `docker update`/`restart` (**write** class) is blocked — `safe` mode requires a human to approve mutations. The bot reports the fix it *would* apply, and the container stays broken until you approve. (Interactive approve/deny is on the roadmap; today `safe` is a hard gate, `auto` runs writes.)
 
 #### Exercise
 
-Seed the other fault the script supports and run the agent against it:
-
-```
-bash scripts/seed-docker-fault.sh exit0
-bun scripts/poc-run.ts docker xops-victim
-```
-
-**Observe** the agent's report. `exit0` is a container that exits cleanly — a one-shot. Which decision-table row does the evidence match? Does the agent loop forever restarting it, and why not?
+Run the OOM fix once in `auto` and once in `safe`, and diff the two runs' `guard.jsonl`. **Which** decisions differ, and which are identical? (Reads and the dangerous-block are identical; only the write class flips.)
 
 ## Cleanup
 
@@ -141,16 +123,16 @@ docker rm -f xops-victim
 
 #### Summary
 
-You watched a guarded agent follow a runbook end to end: deterministic evidence collection, a decision-table match, a fix executed through a fail-closed shim, and verification against real state. The skill's grants plus the risk taxonomy meant the agent *could not* have removed your container even if it tried. In the next tutorial you add the layer this one didn't need: a scoped credential that jails the agent inside one Kubernetes namespace — you are going to need that boundary the moment an agent touches shared infrastructure.
+You saw the full guard model on one bot: **read** commands run freely so diagnosis is never handicapped, **write** commands are gated by mode (`auto` runs them, `safe` blocks them), and **dangerous** commands are refused outright. The bot fixes *in place* and xops verifies the real state itself. The [Kubernetes tutorial](safe-k8s-triage.md) adds the layer this one didn't need — an RBAC-scoped credential, the hard boundary the moment an agent touches shared infrastructure.
 
 ##### Reading List
 
-- [goose recipes](https://block.github.io/goose/docs/guides/recipes/) — how xops drives the engine
-- [Docker restart policies](https://docs.docker.com/engine/containers/start-containers-automatically/)
+- [Security model](../advanced/security.md) — how read/write/dangerous and the two enforcement paths work
+- [Bots](../features/bots.md)
 
 **Search Keywords**
 
 - OOM kill exit code 137
-- docker memory limit update
-- AI agent guardrails
-- executable runbook
+- docker update memory limit in place
+- AI agent guardrails read write dangerous
+- safe mode command approval

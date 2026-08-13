@@ -76,7 +76,7 @@ bash scripts/seed-docker-fault.sh oom
 Now hand it to the agent:
 
 ```
-bun scripts/poc-run.ts docker xops-victim
+bun scripts/bot-run.ts docker-ops xops-victim "the container keeps dying, fix it"
 ```
 
 Watch the output. You will see every command the agent attempted, each one stamped with the guard's decision:
