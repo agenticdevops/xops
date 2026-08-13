@@ -9,7 +9,9 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { loadConfig } from '../packages/core/src/config';
 import { TelegramAdapter } from '../packages/channels/src/telegram';
-import { handleIncident } from '../packages/gateway/src/engine';
+import { listBots, getBot } from '../packages/core/src/bots';
+import { SessionStore } from '../packages/gateway/src/session-store';
+import { runBotTurn } from '../packages/gateway/src/engine/session';
 
 const config = await loadConfig();
 const tgRaw = config.channels.telegram as any;
@@ -24,49 +26,63 @@ const HOME = process.env.HOME ?? '';
 const WORKSPACE = join(HOME, '.xops', 'workspace');
 const SKILLS = join(import.meta.dir, '..', 'packages', 'skills', 'bundled');
 
-interface RoutedIntent {
-  profile: 'k8s' | 'docker';
-  target: string;
-}
+const store = new SessionStore();
+const DEFAULT_BOT = 'k8s-sre';
 
-/** Naive keyword routing for POC; full intent routing lands in phase 1. */
-function routeIntent(text: string): RoutedIntent {
-  const isDocker = /\b(docker|container)\b/i.test(text);
-  if (isDocker) {
-    const m = text.match(/\bcontainer\s+([a-z0-9][a-z0-9_.-]*)/i) ?? text.match(/\bdocker\s+([a-z0-9][a-z0-9_.-]*)/i);
-    return { profile: 'docker', target: m?.[1] ?? 'xops-victim' };
-  }
-  const nsMatch = text.match(/\bns[:= ]\s*([a-z0-9-]+)/i) ?? text.match(/\b(troublesim-[a-z0-9-]+)\b/i);
-  return { profile: 'k8s', target: nsMatch?.[1] ?? 'troublesim-s4' };
+function botsList(): string {
+  return listBots().map((b) => `• \`${b.name}\` — ${b.display}: ${b.description}`).join('\n');
 }
 
 const adapter = new TelegramAdapter(tg);
 
 adapter.onMessage(async (incoming) => {
-  const { profile, target } = routeIntent(incoming.content);
   const chatId = String(incoming.metadata?.chatId ?? incoming.userId);
+  const text = incoming.content.trim();
 
-  let kubeconfig: string | undefined;
-  if (profile === 'k8s') {
-    kubeconfig = join(WORKSPACE, `kubeconfig-${target}`);
-    if (!existsSync(kubeconfig)) {
-      return `No scoped kubeconfig for namespace "${target}". Run: scripts/provision-poc-rbac.sh ${target}`;
-    }
+  if (text === '/bots') {
+    return `Available bots:\n${botsList()}\n\nBind one with \`/use <name>\`.`;
+  }
+  if (text.startsWith('/use ')) {
+    const name = text.slice(5).trim();
+    if (!getBot(name)) return `No bot named "${name}". ${'\n'}${botsList()}`;
+    store.setBot(chatId, name);
+    return `This chat is now talking to *${getBot(name)!.display}*. Set a project with \`/project <ns-or-container>\` if it needs one.`;
+  }
+  if (text.startsWith('/project ')) {
+    const scope = text.slice(9).trim();
+    if (!store.get(chatId)) store.setBot(chatId, DEFAULT_BOT);
+    store.setProject(chatId, scope);
+    return `Project scope for this chat set to \`${scope}\`.`;
   }
 
-  const skill = profile === 'docker' ? 'docker-container-triage' : 'k8s-pod-restart-triage';
-  await adapter.send({ chatId, content: `🔧 On it — investigating \`${target}\` (goose + ${skill})...` });
+  const binding = store.get(chatId) ?? (store.setBot(chatId, DEFAULT_BOT), store.get(chatId)!);
+  const bot = getBot(binding.bot)!;
 
-  console.log(`[poc-tg] ${incoming.username ?? incoming.userId} -> ${profile}:${target}`);
-  const outcome = await handleIncident({
-    target,
-    profile,
-    workdir: join(WORKSPACE, 'goose-runs'),
+  // resolve project: for k8s use scope + provisioned kubeconfig; for docker scope=container
+  let project;
+  if (binding.project) {
+    const kubeconfig = bot.platform === 'k8s' ? join(WORKSPACE, `kubeconfig-${binding.project}`) : undefined;
+    if (bot.platform === 'k8s' && !existsSync(kubeconfig!)) {
+      return `No scoped kubeconfig for namespace "${binding.project}". Run: scripts/provision-poc-rbac.sh ${binding.project}`;
+    }
+    project = { name: binding.project, scope: binding.project, kubeconfig };
+  } else if (bot.platform === 'docker') {
+    return `Tell me which container: \`/project <container-name>\`, then send your message again.`;
+  } else {
+    return `Tell me which namespace: \`/project <namespace>\` (I'll use its scoped kubeconfig).`;
+  }
+
+  await adapter.send({ chatId, content: `🔧 ${bot.display} on \`${project.scope}\`…` });
+  console.log(`[tg] ${incoming.username ?? incoming.userId} -> ${bot.name}:${project.scope}`);
+  const r = await runBotTurn({
+    bot, project, message: text,
+    workdir: join(WORKSPACE, 'bot-runs'),
     skillsSource: SKILLS,
-    kubeconfig,
+    provider: process.env.XOPS_PROVIDER,
+    model: process.env.XOPS_MODEL,
   });
-  console.log(`[poc-tg] done ${profile}:${target} verified=${outcome.verified} wall=${outcome.wallSeconds}s`);
-  return outcome.reply;
+  console.log(`[tg] done ${bot.name}:${project.scope} acted=${r.acted} verified=${r.verified} wall=${r.wallSeconds}s`);
+  return r.reply;
 });
 
 await adapter.initialize();

@@ -8,11 +8,12 @@
  * Guarded tools (kubectl/docker) are PATH-shimmed per run; grants come from
  * the skill's frontmatter (metadata.xops.grants) with a legacy fallback.
  */
-import { spawn } from 'child_process';
-import { accessSync, chmodSync, constants, cpSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import { renderRecipe, type EngineProfile } from './recipe';
 import { parseGooseOutput, type GooseResult } from './parse';
+import { runGooseProcess, findRealTool, writeGuardShim } from './spawn';
+import { parseSkillGrants } from '../../../core/src/skills';
 
 export interface EngineRunOptions {
   target: string; // namespace (k8s) or container name/pattern (docker)
@@ -40,23 +41,11 @@ export interface EngineRunOutcome {
   stderr: string;
 }
 
-const KILL_GRACE_MS = 15_000;
-
 const PROFILE_TOOL: Record<EngineProfile, string> = { k8s: 'kubectl', docker: 'docker' };
 
 const LEGACY_GRANTS: Record<string, string[]> = {
   'k8s-pod-restart-triage': ['get', 'describe', 'logs', 'patch', 'set', 'rollout', 'scale', 'top', 'events'],
 };
-
-/** Parse `grants: [a, b, c]` from SKILL.md frontmatter (metadata.xops.grants). */
-export function parseSkillGrants(skillMd: string): string[] | null {
-  const m = skillMd.match(/grants:\s*\[([^\]]*)\]/);
-  if (!m) return null;
-  return m[1]
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 export function prepWorkdir(opts: EngineRunOptions): {
   recipePath: string;
@@ -90,29 +79,11 @@ export function prepWorkdir(opts: EngineRunOptions): {
   // rather than fall back to a name that would re-resolve to this shim.
   const realTool = findRealTool(tool, join(wd, 'bin'));
   const guardCli = join(import.meta.dir, 'guard-cli.ts');
-  const shimPath = join(wd, 'bin', tool);
   const nsLiteral = opts.profile === 'docker' ? '' : opts.target;
   const targetLiteral = opts.profile === 'docker' ? opts.target : '';
-  writeFileSync(
-    shimPath,
-    `#!/usr/bin/env bash
-# xops fail-closed ${tool} guard shim (generated per run; policy baked in)
-decision=$(bun "${guardCli}" --tool ${shellQuote(tool)} --grants ${shellQuote(grants.join(','))} --ns ${shellQuote(nsLiteral)} --target ${shellQuote(targetLiteral)} --log ${shellQuote(guardLogPath)} -- "$@")
-if [ "$decision" = "ALLOW" ]; then
-  exec ${shellQuote(realTool)} "$@"
-else
-  echo "${tool}-guard: \${decision}" >&2
-  exit 1
-fi
-`,
-  );
-  chmodSync(shimPath, 0o755);
+  writeGuardShim({ wd, tool, grants, ns: nsLiteral, target: targetLiteral, guardLogPath, guardCliPath: guardCli, realTool });
 
   return { recipePath, guardLogPath, binDir: join(wd, 'bin'), grants, tool, realTool };
-}
-
-function shellQuote(s: string): string {
-  return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
 export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOutcome> {
@@ -147,47 +118,10 @@ export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOu
   if (opts.provider) args.push('--provider', opts.provider);
   if (opts.model) args.push('--model', opts.model);
 
-  const chunks: Buffer[] = [];
-  const errChunks: Buffer[] = [];
-  let timedOut = false;
-
-  const exitCode = await new Promise<number | null>((resolvePromise) => {
-    const proc = spawn(gooseBin, args, { cwd: wd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
-
-    proc.stdout.on('data', (d: Buffer) => chunks.push(d));
-    proc.stderr.on('data', (d: Buffer) => errChunks.push(d));
-
-    const killGroup = (signal: NodeJS.Signals) => {
-      if (proc.pid) {
-        try {
-          process.kill(-proc.pid, signal);
-        } catch {
-          try {
-            proc.kill(signal);
-          } catch {}
-        }
-      }
-    };
-
-    const watchdog = setTimeout(() => {
-      timedOut = true;
-      killGroup('SIGTERM');
-      setTimeout(() => killGroup('SIGKILL'), KILL_GRACE_MS).unref();
-    }, timeoutMs);
-
-    proc.on('close', (code) => {
-      clearTimeout(watchdog);
-      resolvePromise(code);
-    });
-    proc.on('error', () => {
-      clearTimeout(watchdog);
-      resolvePromise(null);
-    });
+  const { stdout: raw, stderr, exitCode, timedOut } = await runGooseProcess(args, {
+    cwd: wd, env, timeoutMs, gooseBin,
   });
-
-  const raw = Buffer.concat(chunks).toString('utf8');
   writeFileSync(rawPath, raw);
-  const stderr = Buffer.concat(errChunks).toString('utf8');
   writeFileSync(join(wd, 'run.stderr.log'), stderr);
 
   const guardLog = readFileSync(guardLogPath, 'utf8')
@@ -202,20 +136,4 @@ export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOu
     });
 
   return { result: parseGooseOutput(raw), exitCode, timedOut, guardLog, rawPath, stderr };
-}
-
-function findRealTool(tool: string, shimBinDir: string): string {
-  const path = (process.env.PATH ?? '').split(':').filter((p) => p && resolve(p) !== resolve(shimBinDir));
-  for (const dir of path) {
-    const candidate = join(dir, tool);
-    try {
-      accessSync(candidate, constants.X_OK);
-      return candidate;
-    } catch {
-      continue;
-    }
-  }
-  // Never return a bare name: the shim would exec it, PATH would resolve it
-  // back to the shim, and the run becomes a fork bomb (security review).
-  throw new Error(`real ${tool} binary not found on PATH — refusing to generate shim`);
 }

@@ -30,6 +30,18 @@ bun scripts/poc-telegram.ts
 
 Messages mentioning `docker` or `container <name>` route to the docker triage skill; messages naming a namespace route to k8s triage. Everything else gets a conversational reply — also through goose, with a tool-less recipe (chat turns cannot execute commands).
 
+## Talking to a bot
+
+Once the Telegram bridge is running, you can interact with bots using these commands:
+
+| Command | Purpose |
+|---|---|
+| `/bots` | List available bots |
+| `/use <name>` | Bind this chat to a bot (e.g., `/use k8s-sre` or `/use docker-ops`) |
+| `/project <scope>` | Set what the bot is scoped to (namespace or container name) |
+
+After selecting a bot and project, just send messages normally — the bot will answer questions and execute skills within its scoped session.
+
 ## Helper scripts
 
 | Script | Purpose |
