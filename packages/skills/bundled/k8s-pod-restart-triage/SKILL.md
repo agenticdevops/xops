@@ -9,6 +9,12 @@ metadata:
     tier: worker
     risk: medium
     escalate_when: "root cause not in decision table; fix fails verification twice; any fix would delete data"
+  xops:
+    version: 0.1.0
+    tier: worker
+    risk: medium
+    grants: [get, describe, logs, patch, set, rollout, scale, top, events]
+    escalate_when: "root cause not in decision table; fix fails verification twice; any fix would delete data"
 ---
 # Kubernetes Pod Restart Triage
 
