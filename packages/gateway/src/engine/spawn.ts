@@ -24,16 +24,16 @@ export function findRealTool(tool: string, shimBinDir: string): string {
 }
 
 export function writeGuardShim(params: {
-  wd: string; tool: string; grants: string[]; ns: string; target: string;
+  wd: string; tool: string; mode: string;
   guardLogPath: string; guardCliPath: string; realTool: string;
 }): string {
-  const { wd, tool, grants, ns, target, guardLogPath, guardCliPath, realTool } = params;
+  const { wd, tool, mode, guardLogPath, guardCliPath, realTool } = params;
   const shimPath = join(wd, 'bin', tool);
   writeFileSync(
     shimPath,
     `#!/usr/bin/env bash
-# xops fail-closed ${tool} guard shim (generated per run; policy baked in)
-decision=$(bun "${guardCliPath}" --tool ${shellQuote(tool)} --grants ${shellQuote(grants.join(','))} --ns ${shellQuote(ns)} --target ${shellQuote(target)} --log ${shellQuote(guardLogPath)} -- "$@")
+# xops ${tool} guard shim (generated per run; policy baked in)
+decision=$(bun "${guardCliPath}" --tool ${shellQuote(tool)} --mode ${shellQuote(mode)} --log ${shellQuote(guardLogPath)} -- "$@")
 if [ "$decision" = "ALLOW" ]; then
   exec ${shellQuote(realTool)} "$@"
 else
@@ -59,10 +59,10 @@ fi
  * hook crash/timeout.
  */
 export function writeClaudeGuardHook(params: {
-  wd: string; tool: string; grants: string[]; ns: string; target: string;
+  wd: string; tool: string; mode: string;
   guardLogPath: string; guardCliPath: string;
 }): void {
-  const { wd, tool, grants, ns, target, guardLogPath, guardCliPath } = params;
+  const { wd, tool, mode, guardLogPath, guardCliPath } = params;
   const hookPath = join(wd, 'guard-hook.sh');
   writeFileSync(
     hookPath,
@@ -72,7 +72,7 @@ export function writeClaudeGuardHook(params: {
 # any error — Claude Code fails OPEN on hook crash, so we must deny explicitly.
 set -uo pipefail
 input=$(cat)
-printf '%s' "$input" | timeout 10 bun ${shellQuote(guardCliPath)} --hook --tool ${shellQuote(tool)} --grants ${shellQuote(grants.join(','))} --ns ${shellQuote(ns)} --target ${shellQuote(target)} --log ${shellQuote(guardLogPath)}
+printf '%s' "$input" | timeout 10 bun ${shellQuote(guardCliPath)} --hook --tool ${shellQuote(tool)} --mode ${shellQuote(mode)} --log ${shellQuote(guardLogPath)}
 rc=$?
 if [ "$rc" = "0" ]; then exit 0; fi
 if [ "$rc" = "2" ]; then exit 2; fi

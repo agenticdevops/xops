@@ -1,19 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { join, resolve } from 'path';
 import { mutatedInGuardLog, shouldVerify } from './session';
-import { grantsFor } from '../../../core/src/skills';
-import { listBots } from '../../../core/src/bots';
-
-describe('grantsFor bundled bots', () => {
-  const bundledSkillsDir = resolve(join(import.meta.dir, '../../../skills/bundled'));
-
-  for (const bot of listBots()) {
-    test(`${bot.name} resolves at least one grant from its skills`, () => {
-      const grants = grantsFor(bot.skills, bundledSkillsDir);
-      expect(grants.length).toBeGreaterThan(0);
-    });
-  }
-});
 
 describe('mutatedInGuardLog', () => {
   test('true when an allowed HIGH command ran', () => {

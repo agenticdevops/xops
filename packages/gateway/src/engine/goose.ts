@@ -13,7 +13,7 @@ import { join, resolve } from 'path';
 import { renderRecipe, type EngineProfile } from './recipe';
 import { parseGooseOutput, type GooseResult } from './parse';
 import { runGooseProcess, findRealTool, writeGuardShim } from './spawn';
-import { parseSkillGrants } from '../../../core/src/skills';
+import type { GuardMode } from './guard';
 
 export interface EngineRunOptions {
   target: string; // namespace (k8s) or container name/pattern (docker)
@@ -25,6 +25,7 @@ export interface EngineRunOptions {
   gooseBin?: string;
   timeoutMs?: number;
   maxTurns?: number;
+  mode?: GuardMode; // guard mode: 'auto' (writes allowed) | 'safe' (writes blocked)
   /** goose provider override (e.g. 'ollama', 'anthropic'). Avoids machine-default
    *  claude-acp, whose ACP bridge has proven flaky (hangs on parallel tool calls,
    *  no skill registry passthrough). */
@@ -43,20 +44,16 @@ export interface EngineRunOutcome {
 
 const PROFILE_TOOL: Record<EngineProfile, string> = { k8s: 'kubectl', docker: 'docker' };
 
-const LEGACY_GRANTS: Record<string, string[]> = {
-  'k8s-pod-restart-triage': ['get', 'describe', 'logs', 'patch', 'set', 'rollout', 'scale', 'top', 'events'],
-};
-
 export function prepWorkdir(opts: EngineRunOptions): {
   recipePath: string;
   guardLogPath: string;
   binDir: string;
-  grants: string[];
   tool: string;
   realTool: string;
 } {
   const profile = opts.profile ?? 'k8s';
   const tool = PROFILE_TOOL[profile];
+  const mode = opts.mode ?? 'auto';
   const wd = resolve(opts.workdir);
   mkdirSync(join(wd, '.goose', 'skills'), { recursive: true });
   mkdirSync(join(wd, 'bin'), { recursive: true });
@@ -64,26 +61,21 @@ export function prepWorkdir(opts: EngineRunOptions): {
   const skillDir = join(opts.skillsSource, opts.skill);
   cpSync(skillDir, join(wd, '.goose', 'skills', opts.skill), { recursive: true });
 
-  const skillMd = readFileSync(join(skillDir, 'SKILL.md'), 'utf8');
-  const grants = parseSkillGrants(skillMd) ?? LEGACY_GRANTS[opts.skill] ?? [];
-
   const recipePath = join(wd, 'recipe.yaml');
   writeFileSync(recipePath, renderRecipe({ skill: opts.skill, profile }));
 
   const guardLogPath = join(wd, 'guard.jsonl');
   writeFileSync(guardLogPath, '');
 
-  // Policy is baked into the shim as literals — never read from env the
-  // agent's shell controls (security review: env-var override bypass).
-  // The real binary path is resolved now and baked too; findRealTool throws
-  // rather than fall back to a name that would re-resolve to this shim.
+  // Policy (tool + mode) is baked into the shim as literals — never read from
+  // env the agent's shell controls. The real binary path is resolved now and
+  // baked too; findRealTool throws rather than fall back to a name that would
+  // re-resolve to this shim.
   const realTool = findRealTool(tool, join(wd, 'bin'));
   const guardCli = join(import.meta.dir, 'guard-cli.ts');
-  const nsLiteral = opts.profile === 'docker' ? '' : opts.target;
-  const targetLiteral = opts.profile === 'docker' ? opts.target : '';
-  writeGuardShim({ wd, tool, grants, ns: nsLiteral, target: targetLiteral, guardLogPath, guardCliPath: guardCli, realTool });
+  writeGuardShim({ wd, tool, mode, guardLogPath, guardCliPath: guardCli, realTool });
 
-  return { recipePath, guardLogPath, binDir: join(wd, 'bin'), grants, tool, realTool };
+  return { recipePath, guardLogPath, binDir: join(wd, 'bin'), tool, realTool };
 }
 
 export async function runGooseSkill(opts: EngineRunOptions): Promise<EngineRunOutcome> {

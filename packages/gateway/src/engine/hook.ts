@@ -12,7 +12,7 @@
  * not a clean stage leader (`sh -c '...'`, `env docker ...`) — is denied
  * fail-closed.
  */
-import { evaluateCommand, type GuardDecision } from './guard';
+import { evaluateCommand, type GuardDecision, type GuardMode } from './guard';
 
 export type ParsedCommands =
   | { kind: 'none' } // no guarded tool referenced — runs unguarded, same as the PATH shim
@@ -144,9 +144,7 @@ export function parseGuardedCommands(command: string, tool: string): ParsedComma
 
 export interface HookPolicy {
   tool: string;
-  grants: string[];
-  namespace?: string;
-  target?: string;
+  mode?: GuardMode;
 }
 
 const TIER_RANK: Record<string, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
@@ -165,13 +163,7 @@ export function hookDecision(command: string, policy: HookPolicy): GuardDecision
 
   let best: GuardDecision = { allowed: true, reason: 'ok', tier: 'LOW' };
   for (const args of parsed.list) {
-    const d = evaluateCommand({
-      tool: policy.tool,
-      args,
-      skillGrants: policy.grants,
-      namespace: policy.namespace,
-      target: policy.target,
-    });
+    const d = evaluateCommand({ tool: policy.tool, args, mode: policy.mode });
     if (!d.allowed) return d;
     if (d.tier && (TIER_RANK[d.tier] ?? 0) >= (TIER_RANK[best.tier ?? 'LOW'] ?? 0)) best = d;
   }

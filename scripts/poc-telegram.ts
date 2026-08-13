@@ -80,6 +80,7 @@ adapter.onMessage(async (incoming) => {
     skillsSource: SKILLS,
     provider: process.env.XOPS_PROVIDER,
     model: process.env.XOPS_MODEL,
+    mode: (process.env.XOPS_MODE as 'auto' | 'safe') || 'auto',
   });
   console.log(`[tg] done ${bot.name}:${project.scope} acted=${r.acted} verified=${r.verified} wall=${r.wallSeconds}s`);
   return r.reply;

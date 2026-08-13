@@ -1,24 +1,21 @@
 /**
  * CLI entry for the command guard, two modes:
  *
- *  PATH-shim mode (native goose providers): goose runs tools through a shell
- *    whose PATH we control; the generated shim calls
- *      guard-cli.ts --tool T --grants a,b --ns N --target C --log P -- <argv...>
+ *  PATH-shim mode (native goose providers): the generated shim calls
+ *      guard-cli.ts --tool T --mode M --log P -- <argv...>
  *    and reads ALLOW/DENY from stdout (exit 1 on deny).
  *
- *  Hook mode (claude-acp provider): Claude Code executes tools via its Bash
- *    tool, bypassing our PATH shim. A generated Claude Code PreToolUse hook
- *    calls  guard-cli.ts --hook --tool T --grants a,b --ns N --target C --log P
- *    and pipes the hook's JSON on stdin. We extract tool_input.command, decide,
- *    and signal Claude Code with exit code: 0 = allow, 2 = hard block (reason
- *    on stderr). Fail-closed: any error → exit 2 (Claude Code fails OPEN on
- *    hook crash, so we must deny explicitly, never throw).
+ *  Hook mode (claude-acp provider): the generated Claude Code PreToolUse hook
+ *    calls  guard-cli.ts --hook --tool T --mode M --log P  and pipes the hook
+ *    JSON on stdin. We extract tool_input.command, decide, and signal Claude
+ *    Code with exit code: 0 = allow, 2 = hard block (reason on stderr).
+ *    Fail-closed: any error → exit 2 (Claude Code fails OPEN on hook crash).
  *
- * Policy always arrives as argv (baked into the generated shim/hook) — NEVER
- * from environment variables the guarded agent controls.
+ * Policy (tool + mode) is baked into the generated shim/hook as argv — never
+ * read from environment variables the guarded agent controls.
  */
 import { appendFileSync, readFileSync } from 'fs';
-import { evaluateCommand } from './guard';
+import { evaluateCommand, type GuardMode } from './guard';
 import { hookDecision } from './hook';
 
 const argv = process.argv.slice(2);
@@ -33,15 +30,13 @@ function policyValue(flag: string): string {
 
 const hookMode = policyArgs.includes('--hook');
 const tool = policyValue('--tool');
-const grants = policyValue('--grants').split(',').filter(Boolean);
-const ns = policyValue('--ns') || undefined;
-const target = policyValue('--target') || undefined;
+const mode = (policyValue('--mode') || 'auto') as GuardMode;
 const logPath = policyValue('--log');
 
 function log(entry: Record<string, unknown>): void {
   if (!logPath) return;
   try {
-    appendFileSync(logPath, JSON.stringify({ ts: new Date().toISOString(), tool, ...entry }) + '\n');
+    appendFileSync(logPath, JSON.stringify({ ts: new Date().toISOString(), tool, mode, ...entry }) + '\n');
   } catch {
     // logging must never turn a deny into a crash-open
   }
@@ -54,16 +49,14 @@ if (hookMode) {
       tool_name?: string;
       tool_input?: { command?: string };
     };
-    if (input.tool_name !== 'Bash') {
-      process.exit(0); // only the Bash tool is guarded here
-    }
+    if (input.tool_name !== 'Bash') process.exit(0); // only the Bash tool is guarded here
     const command = input.tool_input?.command ?? '';
     if (!tool) {
       console.error('xops-guard: policy missing --tool (fail-closed)');
       process.exit(2);
     }
-    const decision = hookDecision(command, { tool, grants, namespace: ns, target });
-    log({ mode: 'hook', command, ...decision });
+    const decision = hookDecision(command, { tool, mode });
+    log({ mode: 'hook', policyMode: mode, command, ...decision });
     if (decision.allowed) process.exit(0);
     console.error(`xops-guard: blocked — ${decision.reason}`);
     process.exit(2);
@@ -76,10 +69,10 @@ if (hookMode) {
 
 // PATH-shim mode.
 const decision = tool
-  ? evaluateCommand({ tool, args: cmdArgs, skillGrants: grants, namespace: ns, target })
+  ? evaluateCommand({ tool, args: cmdArgs, mode })
   : { allowed: false, reason: 'guard policy missing --tool (fail-closed)' };
 
-log({ mode: 'shim', args: cmdArgs, ...decision });
+log({ mode: 'shim', policyMode: mode, args: cmdArgs, ...decision });
 
 if (decision.allowed) {
   console.log('ALLOW');

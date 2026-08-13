@@ -63,31 +63,36 @@ describe('parseGuardedCommands (multi-stage pipeline/sequence aware)', () => {
   });
 });
 
-const POLICY = { tool: 'docker', grants: ['ps', 'inspect', 'logs', 'restart', 'update'], target: 'xops-victim' };
+const AUTO = { tool: 'docker', mode: 'auto' as const };
+const SAFE = { tool: 'docker', mode: 'safe' as const };
 
 describe('hookDecision (PreToolUse Bash → allow/deny)', () => {
   test('allows non-guarded commands', () => {
-    expect(hookDecision('bash diagnose.sh xops-victim', POLICY).allowed).toBe(true);
-    expect(hookDecision('cat SKILL.md', POLICY).allowed).toBe(true);
+    expect(hookDecision('bash diagnose.sh xops-victim', AUTO).allowed).toBe(true);
+    expect(hookDecision('cat SKILL.md', AUTO).allowed).toBe(true);
   });
 
-  test('allows granted reads piped to filters', () => {
-    expect(hookDecision('docker ps -a 2>&1 | head -30', POLICY).allowed).toBe(true);
-    expect(hookDecision('docker logs xops-victim 2>&1 | tail -20', POLICY).allowed).toBe(true);
+  test('allows reads piped to filters (any mode)', () => {
+    expect(hookDecision('docker ps -a 2>&1 | head -30', SAFE).allowed).toBe(true);
+    expect(hookDecision('docker logs anything 2>&1 | tail -20', SAFE).allowed).toBe(true);
   });
 
-  test('allows a granted, on-target mutation (and a sequence of them)', () => {
-    expect(hookDecision('docker update --memory 33554432 xops-victim', POLICY).allowed).toBe(true);
-    expect(hookDecision('docker update --memory 32m xops-victim && docker restart xops-victim', POLICY).allowed).toBe(true);
+  test('allows a write in auto mode; a sequence of writes too', () => {
+    expect(hookDecision('docker update --memory 33554432 xops-victim', AUTO).allowed).toBe(true);
+    expect(hookDecision('docker update --memory 32m xops-victim && docker restart xops-victim', AUTO).allowed).toBe(true);
   });
 
-  test('denies if ANY stage is CRITICAL or off-target', () => {
-    expect(hookDecision('docker ps && docker rm -f xops-victim', POLICY).allowed).toBe(false);
-    expect(hookDecision('docker restart production-db', POLICY).allowed).toBe(false);
+  test('blocks a write in safe mode', () => {
+    expect(hookDecision('docker restart web', SAFE).allowed).toBe(false);
+  });
+
+  test('denies if ANY stage is dangerous (CRITICAL), in every mode', () => {
+    expect(hookDecision('docker ps && docker rm -f xops-victim', AUTO).allowed).toBe(false);
+    expect(hookDecision('docker ps && docker rm -f xops-victim', SAFE).allowed).toBe(false);
   });
 
   test('denies substitution / wrappers (fail-closed)', () => {
-    expect(hookDecision('echo $(docker rm xops-victim)', POLICY).allowed).toBe(false);
-    expect(hookDecision(`sh -c 'docker rm xops-victim'`, POLICY).allowed).toBe(false);
+    expect(hookDecision('echo $(docker rm xops-victim)', AUTO).allowed).toBe(false);
+    expect(hookDecision(`sh -c 'docker rm xops-victim'`, AUTO).allowed).toBe(false);
   });
 });

@@ -6,11 +6,11 @@
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import type { Bot, Project } from '../../../core/src/bots';
-import { grantsFor } from '../../../core/src/skills';
 import { renderBotRecipe } from './recipe';
 import { runGooseProcess, findRealTool, writeGuardShim, writeClaudeGuardHook } from './spawn';
 import { parseGooseOutput } from './parse';
 import { verifyContainer, verifyNamespace } from './verify';
+import type { GuardMode } from './guard';
 
 export interface BotTurnRequest {
   bot: Bot;
@@ -22,6 +22,8 @@ export interface BotTurnRequest {
   provider?: string;
   model?: string;
   timeoutMs?: number;
+  /** command guard mode: 'auto' (writes allowed) | 'safe' (writes blocked). Default 'auto'. */
+  mode?: GuardMode;
 }
 
 export interface BotTurnResult {
@@ -60,18 +62,16 @@ export async function runBotTurn(req: BotTurnRequest): Promise<BotTurnResult> {
     cpSync(join(req.skillsSource, skill), join(wd, '.goose', 'skills', skill), { recursive: true });
   }
 
-  const grants = grantsFor(bot.skills, req.skillsSource);
+  const mode = req.mode ?? 'auto';
   const guardLogPath = join(wd, 'guard.jsonl');
   writeFileSync(guardLogPath, '');
   const guardCli = join(import.meta.dir, 'guard-cli.ts');
   const realTool = findRealTool(tool, join(wd, 'bin'));
-  const shimNs = bot.platform === 'docker' ? '' : scope;
-  const shimTarget = bot.platform === 'docker' ? scope : '';
-  writeGuardShim({ wd, tool, grants, ns: shimNs, target: shimTarget, guardLogPath, guardCliPath: guardCli, realTool });
+  writeGuardShim({ wd, tool, mode, guardLogPath, guardCliPath: guardCli, realTool });
   // claude-acp executes tools via Claude Code (bypasses the PATH shim); a
   // fail-closed PreToolUse hook enforces the same policy there. Inert on
   // native providers.
-  writeClaudeGuardHook({ wd, tool, grants, ns: shimNs, target: shimTarget, guardLogPath, guardCliPath: guardCli });
+  writeClaudeGuardHook({ wd, tool, mode, guardLogPath, guardCliPath: guardCli });
 
   const recipePath = join(wd, 'recipe.yaml');
   writeFileSync(recipePath, renderBotRecipe({

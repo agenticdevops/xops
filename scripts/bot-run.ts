@@ -50,6 +50,7 @@ const r = await runBotTurn({
   skillsSource: SKILLS,
   provider: process.env.XOPS_PROVIDER ?? 'claude-acp',
   model: process.env.XOPS_MODEL,
+  mode: (process.env.XOPS_MODE as 'auto' | 'safe') || 'auto', // read allow, write allow(auto)/block(safe), dangerous always blocked
 });
 
 console.log(`[bot-run] acted=${r.acted} verified=${r.verified} wall=${r.wallSeconds}s\n`);

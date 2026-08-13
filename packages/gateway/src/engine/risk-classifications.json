@@ -47,7 +47,22 @@
         "port-forward": "LOW",
         "proxy": "LOW",
         "attach": "MEDIUM",
-        "debug": "MEDIUM"
+        "debug": "MEDIUM",
+        "config view": "LOW",
+        "config get-contexts": "LOW",
+        "config current-context": "LOW",
+        "config get-clusters": "LOW",
+        "config get-users": "LOW",
+        "config set": "MEDIUM",
+        "config set-context": "MEDIUM",
+        "config set-cluster": "MEDIUM",
+        "config set-credentials": "MEDIUM",
+        "config use-context": "MEDIUM",
+        "config rename-context": "MEDIUM",
+        "config unset": "HIGH",
+        "config delete-context": "HIGH",
+        "config delete-cluster": "HIGH",
+        "config delete-user": "HIGH"
       }
     },
     "docker": {
@@ -112,7 +127,15 @@
         "network ls": "LOW",
         "compose down": "CRITICAL",
         "compose up": "HIGH",
-        "update": "HIGH"
+        "update": "HIGH",
+        "system df": "LOW",
+        "system info": "LOW",
+        "system events": "LOW",
+        "volume inspect": "LOW",
+        "network inspect": "LOW",
+        "image inspect": "LOW",
+        "image history": "LOW",
+        "builder prune": "CRITICAL"
       }
     },
     "aws": {
