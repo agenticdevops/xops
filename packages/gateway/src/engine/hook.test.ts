@@ -39,17 +39,42 @@ describe('parseGuardedCommand (claude-acp PreToolUse: extract guarded invocation
       ['docker rm x; echo done', 'docker'],
       ['kubectl get pods | grep bad', 'kubectl'],
       ['echo $(docker rm x)', 'docker'],
-      ['kubectl delete ns prod > /dev/null', 'kubectl'],
+      ['docker inspect x `whoami`', 'docker'],
     ];
     for (const [cmd, tool] of cases) {
       expect(parseGuardedCommand(cmd, tool).kind).toBe('unparseable');
     }
   });
 
+  test('a single guarded command with only a redirect parses (policy decides the verb)', () => {
+    // `kubectl delete ns prod >/dev/null` is one command — parses as an
+    // invocation; the CRITICAL deny happens at the policy layer, not here.
+    expect(parseGuardedCommand('kubectl delete ns prod >/dev/null', 'kubectl')).toEqual({
+      kind: 'invocation', args: ['delete', 'ns', 'prod'],
+    });
+  });
+
   test('guarded tool not the leading command → unparseable (sh -c, env, xargs wrappers)', () => {
     expect(parseGuardedCommand(`sh -c 'kubectl delete ns prod'`, 'kubectl').kind).toBe('unparseable');
     expect(parseGuardedCommand('env docker rm x', 'docker').kind).toBe('unparseable');
     expect(parseGuardedCommand('sudo docker rm x', 'docker').kind).toBe('unparseable');
+  });
+
+  test('trailing I/O redirects are allowed and stripped from args (2>&1, >/dev/null)', () => {
+    expect(parseGuardedCommand(`docker ps -a --format '{{.ID}}' 2>&1`, 'docker')).toEqual({
+      kind: 'invocation', args: ['ps', '-a', '--format', '{{.ID}}'],
+    });
+    expect(parseGuardedCommand('docker inspect x >/dev/null 2>&1', 'docker')).toEqual({
+      kind: 'invocation', args: ['inspect', 'x'],
+    });
+    expect(parseGuardedCommand('kubectl get pods -n demo 2>/dev/null', 'kubectl')).toEqual({
+      kind: 'invocation', args: ['get', 'pods', '-n', 'demo'],
+    });
+  });
+
+  test('redirect does not smuggle a second command past the guard', () => {
+    // `>` then `&&` still chains — must deny
+    expect(parseGuardedCommand('docker ps > /tmp/x && docker rm victim', 'docker').kind).toBe('unparseable');
   });
 
   test('tool name as a substring of another token is not a match', () => {

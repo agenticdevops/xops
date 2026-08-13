@@ -14,20 +14,37 @@ export type ParsedCommand =
   | { kind: 'unparseable'; reason: string }; // guarded tool present but can't be isolated → deny
 
 interface Lexed {
-  tokens: string[];
-  compound: boolean; // saw an unquoted shell control character
+  tokens: string[]; // command words up to the first I/O redirect
+  compound: boolean; // saw an unquoted command-chaining / substitution operator
 }
 
-/** Split on unquoted whitespace, honoring single/double quotes; flag unquoted control chars. */
+/**
+ * Split on unquoted whitespace, honoring single/double quotes.
+ * - `compound` flags genuine chaining/substitution: `&&`, `||`, `;`, `|`,
+ *   backtick, `$`, subshell `()`, a standalone `&`, or `\` — any of which can
+ *   run or hide a SECOND command. These are denied.
+ * - I/O redirects (`>`, `>>`, `<`, `2>&1`, `&>`, `2>/dev/null`) only affect the
+ *   single command's streams. They are NOT compound; arg collection stops at
+ *   the first redirect (the rest is stream plumbing), but scanning continues so
+ *   a chaining operator after a redirect (`> x && rm`) is still caught.
+ */
 function lex(command: string): Lexed {
   const tokens: string[] = [];
   let cur = '';
-  let has = false; // current token has content
+  let has = false;
   let compound = false;
+  let redirected = false; // past the first redirect: stop collecting args, keep scanning
   let quote: "'" | '"' | null = null;
+
+  const push = () => {
+    if (has && !redirected) tokens.push(cur);
+    cur = '';
+    has = false;
+  };
 
   for (let i = 0; i < command.length; i++) {
     const c = command[i];
+    const next = command[i + 1];
     if (quote) {
       if (c === quote) quote = null;
       else {
@@ -38,30 +55,48 @@ function lex(command: string): Lexed {
     }
     if (c === "'" || c === '"') {
       quote = c;
-      has = true; // an empty quoted string is still a token
+      has = true;
       continue;
     }
     if (c === ' ' || c === '\t' || c === '\n') {
-      if (has) {
-        tokens.push(cur);
-        cur = '';
-        has = false;
+      push();
+      continue;
+    }
+    // chaining / substitution → compound (deny)
+    if (c === ';' || c === '|' || c === '`' || c === '$' || c === '(' || c === ')' || c === '\\' || c === '\n') {
+      compound = true;
+      continue;
+    }
+    if (c === '&') {
+      if (next === '>') {
+        // &> redirect
+        push();
+        redirected = true;
+        i++;
+        continue;
       }
+      // && or standalone & (background/chain) → compound
+      compound = true;
+      if (next === '&') i++;
       continue;
     }
-    if (c === '&' || c === '|' || c === ';' || c === '<' || c === '>' || c === '(' || c === ')' || c === '`' || c === '$') {
-      compound = true;
-      continue;
-    }
-    if (c === '\\') {
-      // line continuation or escape — treat as obfuscation
-      compound = true;
+    if (c === '>' || c === '<') {
+      // redirect (incl. >>, >&, 2>&1). A preceding fd digit (2>, 1>) is already in cur.
+      if (has && /^\d+$/.test(cur)) {
+        cur = '';
+        has = false; // drop the bare fd number, it's plumbing not an arg
+      } else {
+        push();
+      }
+      redirected = true;
+      if (next === c) i++; // >>
+      else if (next === '&') i++; // >& / 2>&1 fd-dup — consume the &, the fd digit after is dropped as plumbing
       continue;
     }
     cur += c;
     has = true;
   }
-  if (has) tokens.push(cur);
+  push();
   return { tokens, compound };
 }
 
