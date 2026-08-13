@@ -6,41 +6,46 @@ sidebar_position: 5
 
 xops is early-stage: today you drive it with a handful of scripts. A packaged `xops` CLI (setup wizard, supervised service) is on the roadmap; these scripts are what actually works right now.
 
-## Action runs
+## Run a bot from the terminal
 
-To **run** a guarded triage from the terminal:
+The primary way to test a bot without Telegram. One bot turn against a scope (container or namespace):
 
 ```
-# docker profile
-bun scripts/poc-run.ts docker <container-name>
+# docker
+bun scripts/bot-run.ts docker-ops <container> "<message>"
 
-# kubernetes profile
-bun scripts/poc-run.ts k8s <namespace> [kubeconfig]
+# kubernetes (needs a scoped kubeconfig first — see provision-poc-rbac.sh)
+bun scripts/bot-run.ts k8s-sre <namespace> "<message>"
 ```
 
-Output includes the guard decision log (every command the agent attempted, with ALLOW/DENY and risk tier) and the agent's final report.
+The bot answers, or loads the matching runbook and fixes the problem — every command through the fail-closed guard. Output shows `acted`/`verified`/wall time plus the bot's report. Provider is `XOPS_PROVIDER` (default `claude-acp`, your Claude subscription). See [Bots](features/bots.md) for a full walkthrough.
 
-## Telegram bridge
+## Talk to a bot on Telegram
 
-To **start** the chat bridge:
+Start the bridge:
 
 ```
 bun scripts/poc-telegram.ts
 ```
 
-Messages mentioning `docker` or `container <name>` route to the docker triage skill; messages naming a namespace route to k8s triage. Everything else gets a conversational reply — also through goose, with a tool-less recipe (chat turns cannot execute commands).
-
-## Talking to a bot
-
-Once the Telegram bridge is running, you can interact with bots using these commands:
+Then, in your chat:
 
 | Command | Purpose |
 |---|---|
 | `/bots` | List available bots |
-| `/use <name>` | Bind this chat to a bot (e.g., `/use k8s-sre` or `/use docker-ops`) |
-| `/project <scope>` | Set what the bot is scoped to (namespace or container name) |
+| `/use <name>` | Bind this chat to a bot (e.g. `/use docker-ops`) |
+| `/project <scope>` | Set what the bot is scoped to (namespace or container) |
 
-After selecting a bot and project, just send messages normally — the bot will answer questions and execute skills within its scoped session.
+After binding a bot and project, just send messages — the bot answers or acts within its scoped, guarded session.
+
+## Legacy single-skill runner
+
+`scripts/poc-run.ts` runs one hardcoded triage skill directly (the pre-bot path), still handy for skill-level testing:
+
+```
+bun scripts/poc-run.ts docker <container>
+bun scripts/poc-run.ts k8s <namespace> [kubeconfig]
+```
 
 ## Helper scripts
 
