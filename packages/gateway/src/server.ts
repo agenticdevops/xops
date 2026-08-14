@@ -7,7 +7,9 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serve } from 'bun';
 import type { xopsConfig } from '../../core/src/types';
+import { listBots } from '../../core/src/bots';
 import { runGooseChat } from './engine/chat';
+import { runChatToSink } from './ws-chat';
 import { join } from 'path';
 import { homedir } from 'os';
 import type { ChatMessage, ConversationContext, GatewayStats } from './types';
@@ -90,6 +92,15 @@ export class GatewayServer {
             web: this.config.channels.web?.enabled ?? true,
           },
         },
+      });
+    });
+
+    // Bots endpoint
+    this.app.get('/bots', (c) => {
+      return c.json({
+        bots: listBots().map((b) => ({
+          name: b.name, display: b.display, description: b.description, platform: b.platform, skills: b.skills,
+        })),
       });
     });
 
@@ -322,8 +333,16 @@ export class GatewayServer {
   async start(): Promise<void> {
     const { bind, port } = this.config.gateway;
 
+    const app = this.app;
     this.server = serve({
-      fetch: this.app.fetch,
+      fetch(req, server) {
+        // Bun WebSocket: upgrade /ws requests, hand everything else to Hono.
+        if (new URL(req.url).pathname === '/ws') {
+          if (server.upgrade(req)) return undefined;
+          return new Response('WebSocket upgrade failed', { status: 400 });
+        }
+        return app.fetch(req, { server });
+      },
       hostname: bind,
       port,
       websocket: {
@@ -337,65 +356,20 @@ export class GatewayServer {
         message: async (ws, message) => {
           try {
             const data = JSON.parse(message.toString());
-            if (data.type === 'chat' && data.message) {
-              // Find client
-              let clientEntry: { conversationId: string } | undefined;
-              for (const [, entry] of this.wsClients) {
-                if (entry.ws === ws) {
-                  clientEntry = entry;
-                  break;
-                }
-              }
-
-              if (!clientEntry) {
-                ws.send(JSON.stringify({ type: 'error', message: 'Client not found' }));
-                return;
-              }
-
-              const context = this.getOrCreateConversation(clientEntry.conversationId, 'web');
-
-              // Search memory
-              let memoryContext: string[] = [];
-              if (this.onMemorySearch) {
-                try {
-                  const results = await this.onMemorySearch(data.message, 3);
-                  memoryContext = results.filter((r) => r.score > 0.3).map((r) => r.content);
-                } catch (err) {
-                  console.error('Memory search failed:', err);
-                }
-              }
-
-              // Stream response
-              ws.send(JSON.stringify({ type: 'start' }));
-
-              const fullResponse = await this.gooseChat(context, data.message, memoryContext);
-              ws.send(JSON.stringify({ type: 'chunk', text: fullResponse }));
-
-              // Update conversation
-              context.messages.push(
+            if (data.type === 'chat' && data.message && data.bot) {
+              await runChatToSink(
+                { bot: data.bot, scope: data.scope ?? '', mode: data.mode, message: data.message },
                 {
-                  id: crypto.randomUUID(),
-                  role: 'user',
-                  content: data.message,
-                  timestamp: new Date(),
-                  channel: 'web',
+                  workspace: join(homedir(), '.xops', 'workspace'),
+                  skillsSource: join(import.meta.dir, '..', '..', 'skills', 'bundled'),
+                  provider: process.env.XOPS_PROVIDER,
+                  model: process.env.XOPS_MODEL,
                 },
-                {
-                  id: crypto.randomUUID(),
-                  role: 'assistant',
-                  content: fullResponse,
-                  timestamp: new Date(),
-                  channel: 'web',
-                },
+                (msg) => ws.send(JSON.stringify(msg)),
               );
-              context.lastActivity = new Date();
-              this.stats.messagesProcessed += 2;
-
-              ws.send(JSON.stringify({ type: 'done' }));
             }
           } catch (error) {
-            const err = error as Error;
-            ws.send(JSON.stringify({ type: 'error', message: err.message }));
+            ws.send(JSON.stringify({ type: 'error', message: (error as Error).message }));
           }
         },
         close: (ws) => {

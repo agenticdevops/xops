@@ -95,7 +95,7 @@ exit 2
 
 export function runGooseProcess(
   args: string[],
-  opts: { cwd: string; env: NodeJS.ProcessEnv; timeoutMs: number; gooseBin?: string },
+  opts: { cwd: string; env: NodeJS.ProcessEnv; timeoutMs: number; gooseBin?: string; onStdout?: (chunk: string) => void },
 ): Promise<{ stdout: string; stderr: string; exitCode: number | null; timedOut: boolean }> {
   const chunks: Buffer[] = [];
   const errChunks: Buffer[] = [];
@@ -104,7 +104,10 @@ export function runGooseProcess(
     const proc = spawn(opts.gooseBin ?? 'goose', args, {
       cwd: opts.cwd, env: opts.env, detached: true, stdio: ['ignore', 'pipe', 'pipe'],
     });
-    proc.stdout.on('data', (d: Buffer) => chunks.push(d));
+    proc.stdout.on('data', (d: Buffer) => {
+      chunks.push(d);
+      opts.onStdout?.(d.toString('utf8'));
+    });
     proc.stderr.on('data', (d: Buffer) => errChunks.push(d));
     const killGroup = (signal: NodeJS.Signals) => {
       if (proc.pid) {

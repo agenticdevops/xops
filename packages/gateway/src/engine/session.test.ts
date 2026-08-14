@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { mutatedInGuardLog, shouldVerify } from './session';
+import { mutatedInGuardLog, shouldVerify, drainToResult, type BotTurnEvent } from './session';
 
 describe('mutatedInGuardLog', () => {
   test('true when an allowed HIGH command ran', () => {
@@ -32,5 +32,28 @@ describe('shouldVerify', () => {
   });
   test('skips when there is no project scope to verify against', () => {
     expect(shouldVerify([{ allowed: true, tier: 'HIGH' }], false)).toBe(false);
+  });
+});
+
+describe('drainToResult', () => {
+  test('assembles a BotTurnResult from an event stream', async () => {
+    async function* scripted(): AsyncGenerator<BotTurnEvent> {
+      // Intermediate narration streamed live for the web UI transcript —
+      // drainToResult must NOT fold these deltas into the final reply.
+      yield { type: 'text', delta: 'Investigating memory usage... ' };
+      yield { type: 'guard', tool: 'docker', command: 'docker update --memory 32m x', allowed: true, tier: 'HIGH', category: 'write' };
+      yield { type: 'text', delta: 'Applying fix... ' };
+      yield { type: 'verify', healthy: true, summary: 'x running' };
+      yield { type: 'done', wallSeconds: 12, acted: true, verified: true, reply: 'Root cause: OOM. Fixed.' };
+    }
+    const r = await drainToResult(scripted());
+    expect(r.reply).toContain('Root cause: OOM. Fixed.');
+    expect(r.reply).toContain('x running');
+    expect(r.reply).not.toContain('Investigating memory usage');
+    expect(r.reply).not.toContain('Applying fix');
+    expect(r.acted).toBe(true);
+    expect(r.verified).toBe(true);
+    expect(r.wallSeconds).toBe(12);
+    expect(r.guardLog.length).toBe(1);
   });
 });
