@@ -50,3 +50,8 @@
 
 ---
 *Created 2026-07-31. Status: POC not started.*
+
+## Web chat UI (shipped 2026-08-14)
+Browser SPA (apps/web, Vite+React) ↔ gateway WebSocket. Pick a bot, scope, auto/safe mode; watch the turn stream live (agent text, guard chips, verify banner). streamBotTurn async generator; gateway GET /bots + WS /ws. Run: `bun run cli gateway start` + `bun run web`.
+**Deferred follow-ups:** (1) abort the goose turn when the WS client disconnects (auto-mode writes shouldn't continue after the browser closes); (2) try/finally in streamBotTurn for leak-safety on early generator .return(); (3) role/agent.md editor (define a role, attach skills+tools) — the originally-requested next phase.
+**Env note:** gateway default port 18789 was occupied by a leftover OpenClaw process on the dev machine — free it or use another port.
