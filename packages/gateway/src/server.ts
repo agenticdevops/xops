@@ -7,6 +7,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serve } from 'bun';
 import type { xopsConfig } from '../../core/src/types';
+import { listBots } from '../../core/src/bots';
 import { runGooseChat } from './engine/chat';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -90,6 +91,15 @@ export class GatewayServer {
             web: this.config.channels.web?.enabled ?? true,
           },
         },
+      });
+    });
+
+    // Bots endpoint
+    this.app.get('/bots', (c) => {
+      return c.json({
+        bots: listBots().map((b) => ({
+          name: b.name, display: b.display, description: b.description, platform: b.platform, skills: b.skills,
+        })),
       });
     });
 
