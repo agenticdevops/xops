@@ -8,6 +8,7 @@ import { join, resolve } from 'path';
 import type { Bot, Project } from '../../../core/src/bots';
 import { renderBotRecipe } from './recipe';
 import { runGooseProcess, findRealTool, writeGuardShim, writeClaudeGuardHook } from './spawn';
+import { parseGooseOutput } from './parse';
 import { StreamJsonTextParser } from './stream-parse';
 import { verifyContainer, verifyNamespace } from './verify';
 import type { GuardMode } from './guard';
@@ -53,7 +54,7 @@ export type BotTurnEvent =
   | { type: 'text'; delta: string }
   | { type: 'guard'; tool: string; command: string; allowed: boolean; tier?: string; category?: string }
   | { type: 'verify'; healthy: boolean; summary: string }
-  | { type: 'done'; wallSeconds: number; acted: boolean; verified: boolean | null }
+  | { type: 'done'; wallSeconds: number; acted: boolean; verified: boolean | null; reply: string }
   | { type: 'error'; message: string };
 
 export async function* streamBotTurn(req: BotTurnRequest): AsyncGenerator<BotTurnEvent> {
@@ -157,28 +158,29 @@ export async function* streamBotTurn(req: BotTurnRequest): AsyncGenerator<BotTur
       yield { type: 'verify', healthy: verdict.healthy, summary: verdict.summary };
     }
     if (outcome?.timedOut) yield { type: 'error', message: 'run timed out' };
-    yield { type: 'done', wallSeconds: Math.round((Date.now() - started) / 1000), acted, verified };
+    const finalReply = parseGooseOutput(outcome?.stdout ?? '').finalText ?? '';
+    yield { type: 'done', wallSeconds: Math.round((Date.now() - started) / 1000), acted, verified, reply: finalReply };
   } catch (err) {
     yield { type: 'error', message: (err as Error).message };
-    yield { type: 'done', wallSeconds: Math.round((Date.now() - started) / 1000), acted: false, verified: null };
+    yield { type: 'done', wallSeconds: Math.round((Date.now() - started) / 1000), acted: false, verified: null, reply: '' };
   }
 }
 
 export async function drainToResult(stream: AsyncGenerator<BotTurnEvent>): Promise<BotTurnResult> {
   let text = '';
+  let errorText = '';
   let verifyLine = '';
   let acted = false;
   let verified: boolean | null = null;
   let wallSeconds = 0;
   const guardLog: Array<Record<string, unknown>> = [];
   for await (const e of stream) {
-    if (e.type === 'text') text += e.delta;
-    else if (e.type === 'guard') guardLog.push({ tool: e.tool, command: e.command, allowed: e.allowed, tier: e.tier, category: e.category });
+    if (e.type === 'guard') guardLog.push({ tool: e.tool, command: e.command, allowed: e.allowed, tier: e.tier, category: e.category });
     else if (e.type === 'verify') verifyLine = `\n\n---\n${e.healthy ? '✅ verified' : '⚠️ NOT verified'}: ${e.summary}`;
-    else if (e.type === 'done') { acted = e.acted; verified = e.verified; wallSeconds = e.wallSeconds; }
-    else if (e.type === 'error') text += `\n[error] ${e.message}`;
+    else if (e.type === 'done') { acted = e.acted; verified = e.verified; wallSeconds = e.wallSeconds; text = e.reply; }
+    else if (e.type === 'error') errorText += `\n[error] ${e.message}`;
   }
-  return { reply: `${text}${verifyLine}`.trim() || '(no reply produced)', acted, verified, wallSeconds, guardLog };
+  return { reply: `${text}${verifyLine}${errorText}`.trim() || '(no reply produced)', acted, verified, wallSeconds, guardLog };
 }
 
 export function runBotTurn(req: BotTurnRequest): Promise<BotTurnResult> {
