@@ -333,8 +333,16 @@ export class GatewayServer {
   async start(): Promise<void> {
     const { bind, port } = this.config.gateway;
 
+    const app = this.app;
     this.server = serve({
-      fetch: this.app.fetch,
+      fetch(req, server) {
+        // Bun WebSocket: upgrade /ws requests, hand everything else to Hono.
+        if (new URL(req.url).pathname === '/ws') {
+          if (server.upgrade(req)) return undefined;
+          return new Response('WebSocket upgrade failed', { status: 400 });
+        }
+        return app.fetch(req, { server });
+      },
       hostname: bind,
       port,
       websocket: {

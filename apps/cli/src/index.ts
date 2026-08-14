@@ -74,18 +74,22 @@ program
 
       try {
         const config = await loadConfig();
+        const { DEFAULT_WORKSPACE_PATH } = await import('../../../packages/core/src');
         const { GatewayServer } = await import('../../../packages/gateway/src');
         const { MemoryManager } = await import('../../../packages/memory/src');
 
-        // Initialize memory if enabled
+        // Initialize memory if enabled. Non-fatal: the gateway (and the web
+        // chat UI) work without memory, so a memory failure must not block start.
         let memoryManager: InstanceType<typeof MemoryManager> | undefined;
         if (config.memory?.enabled) {
-          memoryManager = new MemoryManager({
-            dbPath: config.memory.store.path,
-            embeddingProvider: config.memory.provider === 'auto' ? 'openai' : config.memory.provider,
-          });
-          await memoryManager.initialize();
-          console.log(pc.green('✓'), 'Memory system initialized');
+          try {
+            memoryManager = new MemoryManager(config.memory as never, DEFAULT_WORKSPACE_PATH);
+            await memoryManager.init();
+            console.log(pc.green('✓'), 'Memory system initialized');
+          } catch (e) {
+            console.warn(pc.yellow('⚠'), 'Memory system unavailable, continuing without it:', (e as Error).message);
+            memoryManager = undefined;
+          }
         }
 
         // Create gateway server
