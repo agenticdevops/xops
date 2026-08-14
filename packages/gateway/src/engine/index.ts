@@ -14,7 +14,7 @@ export { parseGooseOutput } from './parse';
 export { renderRecipe, type EngineProfile } from './recipe';
 export { runGooseSkill } from './goose';
 export { assessContainer, assessPods, verifyContainer, verifyNamespace } from './verify';
-export { runBotTurn, mutatedInGuardLog, shouldVerify, type BotTurnRequest, type BotTurnResult } from './session';
+export { runBotTurn, streamBotTurn, drainToResult, mutatedInGuardLog, shouldVerify, type BotTurnRequest, type BotTurnResult, type BotTurnEvent } from './session';
 
 export interface IncidentRequest {
   /** namespace (k8s) or container name/pattern (docker) */
