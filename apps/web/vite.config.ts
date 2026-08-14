@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const GATEWAY = process.env.XOPS_GATEWAY ?? 'http://localhost:8787';
+const GATEWAY = process.env.XOPS_GATEWAY ?? 'http://localhost:18789';
 
 export default defineConfig({
   plugins: [react()],

@@ -4,6 +4,7 @@ const sidebars: SidebarsConfig = {
   docs: [
     'intro',
     'getting-started',
+    'web-ui',
     {
       type: 'category',
       label: 'Tutorials',
