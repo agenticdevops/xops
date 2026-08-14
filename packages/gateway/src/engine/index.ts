@@ -8,7 +8,7 @@ import { runGooseSkill, type EngineRunOptions } from './goose';
 import { verifyContainer, verifyNamespace } from './verify';
 import type { EngineProfile } from './recipe';
 
-export { evaluateCommand, evaluateKubectl } from './guard';
+export { evaluateCommand } from './guard';
 export { classify } from './risk';
 export { parseGooseOutput } from './parse';
 export { renderRecipe, type EngineProfile } from './recipe';

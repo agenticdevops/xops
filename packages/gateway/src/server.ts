@@ -9,6 +9,7 @@ import { serve } from 'bun';
 import type { xopsConfig } from '../../core/src/types';
 import { listBots } from '../../core/src/bots';
 import { runGooseChat } from './engine/chat';
+import { runChatToSink } from './ws-chat';
 import { join } from 'path';
 import { homedir } from 'os';
 import type { ChatMessage, ConversationContext, GatewayStats } from './types';
@@ -347,65 +348,20 @@ export class GatewayServer {
         message: async (ws, message) => {
           try {
             const data = JSON.parse(message.toString());
-            if (data.type === 'chat' && data.message) {
-              // Find client
-              let clientEntry: { conversationId: string } | undefined;
-              for (const [, entry] of this.wsClients) {
-                if (entry.ws === ws) {
-                  clientEntry = entry;
-                  break;
-                }
-              }
-
-              if (!clientEntry) {
-                ws.send(JSON.stringify({ type: 'error', message: 'Client not found' }));
-                return;
-              }
-
-              const context = this.getOrCreateConversation(clientEntry.conversationId, 'web');
-
-              // Search memory
-              let memoryContext: string[] = [];
-              if (this.onMemorySearch) {
-                try {
-                  const results = await this.onMemorySearch(data.message, 3);
-                  memoryContext = results.filter((r) => r.score > 0.3).map((r) => r.content);
-                } catch (err) {
-                  console.error('Memory search failed:', err);
-                }
-              }
-
-              // Stream response
-              ws.send(JSON.stringify({ type: 'start' }));
-
-              const fullResponse = await this.gooseChat(context, data.message, memoryContext);
-              ws.send(JSON.stringify({ type: 'chunk', text: fullResponse }));
-
-              // Update conversation
-              context.messages.push(
+            if (data.type === 'chat' && data.message && data.bot) {
+              await runChatToSink(
+                { bot: data.bot, scope: data.scope ?? '', mode: data.mode, message: data.message },
                 {
-                  id: crypto.randomUUID(),
-                  role: 'user',
-                  content: data.message,
-                  timestamp: new Date(),
-                  channel: 'web',
+                  workspace: join(homedir(), '.xops', 'workspace'),
+                  skillsSource: join(import.meta.dir, '..', '..', 'skills', 'bundled'),
+                  provider: process.env.XOPS_PROVIDER,
+                  model: process.env.XOPS_MODEL,
                 },
-                {
-                  id: crypto.randomUUID(),
-                  role: 'assistant',
-                  content: fullResponse,
-                  timestamp: new Date(),
-                  channel: 'web',
-                },
+                (msg) => ws.send(JSON.stringify(msg)),
               );
-              context.lastActivity = new Date();
-              this.stats.messagesProcessed += 2;
-
-              ws.send(JSON.stringify({ type: 'done' }));
             }
           } catch (error) {
-            const err = error as Error;
-            ws.send(JSON.stringify({ type: 'error', message: err.message }));
+            ws.send(JSON.stringify({ type: 'error', message: (error as Error).message }));
           }
         },
         close: (ws) => {
